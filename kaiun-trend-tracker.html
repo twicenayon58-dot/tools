@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>開運 推移トラッカー</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{
+  --bg:#0c0e17;--s1:#161926;--s2:#1e2233;--s3:#252b40;--bd:#2a3050;
+  --tx:#dde1f0;--dm:#6b7194;--ac:#5b7fff;--gn:#2dd4a0;--rd:#f06878;
+  --og:#f0aa40;--pp:#9f7fff;--cy:#22cce0;
+  --gn-bg:rgba(45,212,160,.1);--rd-bg:rgba(240,104,120,.1);--og-bg:rgba(240,170,64,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+/* DROP */
+#dz{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px;
+  background:radial-gradient(ellipse at 50% 35%,rgba(240,170,64,.07) 0%,transparent 55%),var(--bg);
+  position:relative;overflow:hidden;}
+#dz::before{content:'';position:absolute;width:560px;height:560px;border-radius:50%;
+  border:1px solid rgba(240,170,64,.08);top:50%;left:50%;transform:translate(-50%,-52%);pointer-events:none}
+#dz::after{content:'';position:absolute;width:360px;height:360px;border-radius:50%;
+  border:1px solid rgba(240,170,64,.14);top:50%;left:50%;transform:translate(-50%,-52%);pointer-events:none}
+#dz.hidden{display:none}
+.dz-logo{font-size:42px;margin-bottom:6px;filter:drop-shadow(0 0 16px rgba(240,170,64,.55))}
+.dz-name{font-size:22px;font-weight:800;letter-spacing:3px;
+  background:linear-gradient(135deg,#f0aa40,#f06878);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.dz-sub{font-size:11px;color:var(--dm);letter-spacing:3px;margin-bottom:28px}
+.drop-box{width:100%;max-width:500px;border:1px solid rgba(240,170,64,.25);border-radius:16px;
+  padding:40px 32px;text-align:center;cursor:pointer;background:rgba(240,170,64,.03);
+  transition:all .25s;position:relative;z-index:1}
+.drop-box:hover,.drop-box.over{border-color:rgba(240,170,64,.6);background:rgba(240,170,64,.07)}
+.drop-box .icon{font-size:30px;margin-bottom:10px;opacity:.7}
+.drop-box .lbl{font-size:14px;font-weight:700;margin-bottom:6px}
+.drop-box .sub{font-size:11px;color:var(--dm)}
+.dz-hint{margin-top:16px;font-size:11px;color:var(--dm);opacity:.45;letter-spacing:1px;z-index:1;position:relative}
+/* DASHBOARD */
+#db{display:none;padding:18px 22px;max-width:1600px;margin:0 auto}
+#db.on{display:block}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.hdr h1{font-size:17px;font-weight:800}
+.hdr p{font-size:11px;color:var(--dm);margin-top:3px}
+.btn{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:var(--ac)}
+.btn-g{background:var(--gn-bg);border-color:var(--gn);color:var(--gn);font-weight:700}
+/* ALERTS */
+.al{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;margin-bottom:6px;font-size:12px}
+.al.danger{background:var(--rd-bg);border:1px solid rgba(240,104,120,.3);color:var(--rd)}
+.al.warn{background:var(--og-bg);border:1px solid rgba(240,170,64,.3);color:var(--og)}
+.al.ok{background:var(--gn-bg);border:1px solid rgba(45,212,160,.2);color:var(--gn)}
+/* TABS */
+.tabs{display:flex;margin-bottom:14px;border-bottom:1px solid var(--bd);overflow-x:auto}
+.tab{padding:8px 14px;font-size:12px;font-weight:600;color:var(--dm);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;
+  font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--tx)}.tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tc{display:none}.tc.active{display:block}
+/* METRIC CARDS */
+.mc-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-bottom:16px}
+.mc{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:13px 15px}
+.mc.red{border-color:rgba(240,104,120,.4);background:rgba(240,104,120,.04)}
+.mc.green{border-color:rgba(45,212,160,.3)}
+.mc .ml{font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.mc .mv{font-size:21px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.mc .ms{font-size:11px;color:var(--dm);margin-top:2px}
+.up{color:var(--gn)}.dn{color:var(--rd)}.eq{color:var(--dm)}
+/* CHART */
+.cw{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.ct{font-size:13px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cs{font-size:11px;color:var(--dm);margin-bottom:12px}
+.lgd{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--dm);margin-top:8px}
+.lgd-i{display:flex;align-items:center;gap:5px}
+.lgd-d{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+/* TABLE */
+.tw{overflow-x:auto;border-radius:10px;border:1px solid var(--bd);background:var(--s1);margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+th{background:var(--s2);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--dm);padding:8px 11px;text-align:right;border-bottom:1px solid var(--bd)}
+th:first-child{text-align:left;padding-left:13px}
+td{padding:7px 11px;border-bottom:1px solid rgba(42,48,80,.4);text-align:right;
+  font-family:'JetBrains Mono',monospace;font-size:12px}
+td:first-child{text-align:left;font-family:'Noto Sans JP',sans-serif;padding-left:13px}
+tr:last-child td{border-bottom:none}
+.rh{color:var(--gn)}.rm{color:var(--og)}.rl{color:var(--rd)}
+.tot td{background:var(--s2);font-weight:700;border-top:2px solid var(--bd)}
+/* GOAL */
+.goal-bar{background:var(--s2);border-radius:10px;padding:14px;margin-bottom:14px}
+.goal-bar .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.goal-bar .row:last-child{margin-bottom:0}
+.goal-bar label{font-size:12px;color:var(--dm);min-width:130px}
+.gi{background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 9px;
+  border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;width:85px;text-align:right}
+/* PROGRESS */
+.prog-wrap{margin-bottom:12px}
+.prog-label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.prog-track{height:8px;background:var(--s3);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .4s}
+/* BADGE */
+.badge{display:inline-block;border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:5px}
+.badge-red{background:var(--rd-bg);color:var(--rd);border:1px solid rgba(240,104,120,.3)}
+.badge-og{background:var(--og-bg);color:var(--og);border:1px solid rgba(240,170,64,.3)}
+.badge-gn{background:var(--gn-bg);color:var(--gn);border:1px solid rgba(45,212,160,.2)}
+/* SEGMENT TOGGLE */
+.seg-toggle{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.stbtn{background:var(--s2);border:1px solid var(--bd);color:var(--dm);padding:5px 11px;
+  border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s}
+.stbtn.on{color:#fff}
+.stbtn[data-seg="all"].on{background:#3b82f6;border-color:#3b82f6}
+.stbtn[data-seg="new"].on{background:#f0aa40;border-color:#f0aa40;color:#0c0e17}
+.stbtn[data-seg="paid"].on{background:#9f7fff;border-color:#9f7fff}
+.stbtn[data-seg="unpaid"].on{background:#22cce0;border-color:#22cce0;color:#0c0e17}
+.stbtn[data-seg="ad"].on{background:#f06878;border-color:#f06878}
+.stbtn[data-seg="csv"].on{background:#2dd4a0;border-color:#2dd4a0;color:#0c0e17}
+/* NOTE */
+.note{font-size:11px;color:var(--dm);padding:8px 12px;background:var(--s2);border-radius:8px;border-left:3px solid var(--ac);margin-bottom:12px}
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:800px){.two-col{grid-template-columns:1fr}.mc-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- DROP -->
+<div id="dz">
+  <div class="dz-logo">☽</div>
+  <div class="dz-name">開運 推移トラッカー</div>
+  <div class="dz-sub">Trend Analytics</div>
+  <div class="drop-box" id="drop-box" onclick="document.getElementById('fi').click()">
+    <div class="icon">📁</div>
+    <div class="lbl">保存したJSONをドロップ or クリック</div>
+    <div class="sub">複数ファイル一括OK・どこからでも追加できます</div>
+  </div>
+  <div class="dz-hint">毎日1ファイル保存 → ここに貯めていく</div>
+  <input type="file" id="fi" accept=".json" multiple style="display:none">
+</div>
+
+<!-- DASHBOARD -->
+<div id="db">
+  <div class="hdr">
+    <div>
+      <h1>☽ 開運 推移トラッカー</h1>
+      <p id="data-range">-</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-g" onclick="addMore()">＋ JSONを追加</button>
+      <button class="btn" onclick="location.reload()">← やり直す</button>
+    </div>
+  </div>
+  <div id="alert-area" style="margin-bottom:12px"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="daily">📅 日次</button>
+    <button class="tab" data-tab="weekly">📆 週次</button>
+    <button class="tab" data-tab="monthly">📊 月次</button>
+    <button class="tab" data-tab="compare">🔀 比較</button>
+    <button class="tab" data-tab="segment">👥 セグメント</button>
+    <button class="tab" data-tab="mtg">📋 MTG</button>
+  </div>
+
+  <!-- 日次 -->
+  <div class="tc active" id="tab-daily">
+    <div class="mc-row" id="mc-daily"></div>
+    <div class="goal-bar">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px">🎯 目標設定</div>
+      <div class="row">
+        <label>月間目標ログイン（合計）</label>
+        <input type="number" class="gi" id="g-month-login" value="12000">
+        <span style="font-size:11px;color:var(--dm)">→ 日次: <b id="g-day-login">-</b></span>
+      </div>
+      <div class="row">
+        <label>月間目標返信（合計）</label>
+        <input type="number" class="gi" id="g-month-reply" value="1800">
+        <span style="font-size:11px;color:var(--dm)">→ 日次: <b id="g-day-reply">-</b></span>
+      </div>
+      <button class="btn" onclick="renderAll()" style="margin-top:6px">適用</button>
+    </div>
+    <div id="month-progress"></div>
+    <div class="cw">
+      <div class="ct">日次ログイン推移 <span id="badge-daily"></span></div>
+      <div class="cs">棒=ログイン　折れ線=返信　橙破線=日次目標　赤破線=前週同曜日-25%アラートライン</div>
+      <div style="position:relative;height:280px"><canvas id="c-daily"></canvas></div>
+      <div class="lgd">
+        <div class="lgd-i"><div class="lgd-d" style="background:#3b82f6"></div>ログイン</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#10b981"></div>返信</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#f0aa40;opacity:.7"></div>目標</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#f06878;opacity:.6"></div>アラートライン</div>
+      </div>
+    </div>
+    <div class="cw">
+      <div class="ct">曜日別平均（全期間）</div>
+      <div class="cs">何曜日が強い・弱いかを把握。金色=最高値曜日</div>
+      <div style="position:relative;height:220px"><canvas id="c-weekday"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 週次 -->
+  <div class="tc" id="tab-weekly">
+    <div class="mc-row" id="mc-weekly"></div>
+    <div class="cw">
+      <div class="ct">週次ログイン合計推移</div>
+      <div class="cs">各週の合計。下降トレンドを週単位で確認する</div>
+      <div style="position:relative;height:260px"><canvas id="c-weekly"></canvas></div>
+    </div>
+    <div class="cw">
+      <div class="ct">前週比（%）</div>
+      <div class="cs">緑=成長・赤=後退。-15%で危険ゾーン</div>
+      <div style="position:relative;height:220px"><canvas id="c-wow"></canvas></div>
+    </div>
+    <div class="tw">
+      <table><thead><tr>
+        <th>週</th><th>日数</th><th>ログイン計</th><th>返信計</th>
+        <th>日平均ログイン</th><th>日平均返信</th><th>返信率</th>
+        <th>前週比(ログイン)</th><th>前週比(返信)</th>
+      </tr></thead><tbody id="tb-weekly"></tbody></table>
+    </div>
+  </div>
+
+  <!-- 月次 -->
+  <div class="tc" id="tab-monthly">
+    <div class="mc-row" id="mc-monthly"></div>
+    <div class="cw">
+      <div class="ct">月次ログイン・返信推移</div>
+      <div class="cs">月別合計。トレンドライン（破線）は今後3ヶ月の予測</div>
+      <div style="position:relative;height:280px"><canvas id="c-monthly"></canvas></div>
+      <div class="lgd">
+        <div class="lgd-i"><div class="lgd-d" style="background:#3b82f6"></div>ログイン合計</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#10b981"></div>返信合計</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#f0aa40;opacity:.6"></div>予測（トレンド）</div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="cw">
+        <div class="ct">月内 週別推移（直近2ヶ月）</div>
+        <div class="cs">月の第何週が強い・弱いか</div>
+        <div style="position:relative;height:220px"><canvas id="c-week-in-month"></canvas></div>
+      </div>
+      <div class="cw">
+        <div class="ct">前月比（%）</div>
+        <div class="cs">100%超=成長</div>
+        <div style="position:relative;height:220px"><canvas id="c-mom-ratio"></canvas></div>
+      </div>
+    </div>
+    <div class="tw">
+      <table><thead><tr>
+        <th>月</th><th>日数</th><th>ログイン計</th><th>返信計</th>
+        <th>日平均ログイン</th><th>日平均返信</th><th>返信率</th>
+        <th>前月比(ログイン)</th><th>前月比(返信)</th>
+      </tr></thead><tbody id="tb-monthly"></tbody></table>
+    </div>
+  </div>
+
+  <!-- 比較 -->
+  <div class="tc" id="tab-compare">
+    <div class="cw">
+      <div class="ct">今月 vs 先月（日単位重ね）</div>
+      <div class="cs">実線=今月・破線=先月。どの日に差がついているか</div>
+      <div style="position:relative;height:280px"><canvas id="c-mom"></canvas></div>
+      <div class="lgd">
+        <div class="lgd-i"><div class="lgd-d" style="background:#3b82f6"></div>今月ログイン</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#3b82f6;opacity:.4"></div>先月ログイン</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#10b981"></div>今月返信</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#10b981;opacity:.4"></div>先月返信</div>
+      </div>
+    </div>
+    <div class="cw">
+      <div class="ct">今週 vs 先週（曜日別重ね）</div>
+      <div class="cs">何曜日で差がついているか一目で分かる</div>
+      <div style="position:relative;height:240px"><canvas id="c-wow2"></canvas></div>
+    </div>
+  </div>
+
+  <!-- セグメント -->
+  <div class="tc" id="tab-segment">
+    <div class="note">💡 新規（0日目）/課金者/未課金者/純広告/CSV系 で分けて推移を確認できます。JSONに広告コード情報が含まれている場合のみ純広告/CSV分類が有効。</div>
+    <div class="seg-toggle">
+      <button class="stbtn on" data-seg="all" onclick="setSeg('all',this)">全体</button>
+      <button class="stbtn" data-seg="new" onclick="setSeg('new',this)">新規（0日目）</button>
+      <button class="stbtn" data-seg="paid" onclick="setSeg('paid',this)">課金者</button>
+      <button class="stbtn" data-seg="unpaid" onclick="setSeg('unpaid',this)">未課金者</button>
+      <button class="stbtn" data-seg="ad" onclick="setSeg('ad',this)">純広告</button>
+      <button class="stbtn" data-seg="csv" onclick="setSeg('csv',this)">CSV系</button>
+    </div>
+    <div class="mc-row" id="mc-seg"></div>
+    <div class="cw">
+      <div class="ct" id="seg-chart-title">セグメント別 日次推移</div>
+      <div class="cs">選択したセグメントのログイン推移（直近30日）</div>
+      <div style="position:relative;height:280px"><canvas id="c-seg"></canvas></div>
+    </div>
+    <div class="cw">
+      <div class="ct">全セグメント比較（週次合計）</div>
+      <div class="cs">各セグメントの規模感と変化を並べて確認</div>
+      <div style="position:relative;height:260px"><canvas id="c-seg-all"></canvas></div>
+      <div class="lgd">
+        <div class="lgd-i"><div class="lgd-d" style="background:#f0aa40"></div>新規</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#9f7fff"></div>課金者</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#22cce0"></div>未課金者</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MTG -->
+  <div class="tc" id="tab-mtg">
+    <div class="note">💡 このページの数字をそのままMTGで使用できます。Ctrl+P（または⌘+P）でPDF出力可。</div>
+    <div class="mc-row" id="mc-mtg"></div>
+    <div class="two-col">
+      <div class="cw">
+        <div class="ct">3ヶ月トレンド（週次平均）+ 予測</div>
+        <div style="position:relative;height:240px"><canvas id="c-mtg-trend"></canvas></div>
+        <div class="lgd">
+          <div class="lgd-i"><div class="lgd-d" style="background:#3b82f6"></div>週次平均実績</div>
+          <div class="lgd-i"><div class="lgd-d" style="background:#f0aa40;opacity:.7"></div>予測（線形回帰）</div>
+        </div>
+      </div>
+      <div class="cw">
+        <div class="ct">前月比率推移</div>
+        <div class="cs">100%超=成長・下落トレンドに注意</div>
+        <div style="position:relative;height:240px"><canvas id="c-mtg-ratio"></canvas></div>
+      </div>
+    </div>
+    <div id="mtg-insight"></div>
+  </div>
+</div>
+
+<input type="file" id="fi-more" accept=".json" multiple style="display:none">
+
+<script>
+let D=[], cMap={};
+const DOW=['日','月','火','水','木','金','土'];
+
+function gw(s){const d=new Date(s);const m=new Date(d);m.setDate(d.getDate()-((d.getDay()+6)%7));return m.toISOString().slice(0,10)}
+function gm(s){return s.slice(0,7)}
+function fd(s){return s.slice(5).replace('-','/')}
+function dow(s){return DOW[new Date(s).getDay()]}
+function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'-'}
+function ds(c,p){if(!p)return'-';const d=Math.round((c-p)/p*100);return(d>=0?'+':'')+d+'%'}
+function dc(c,p){if(!p)return'';const d=(c-p)/p*100;return d>=5?'rh':d<=-5?'rl':'rm'}
+function kd(id){if(cMap[id]){cMap[id].destroy();delete cMap[id];}}
+function segVal(d,seg){
+  if(seg==='all')return d.login||0;
+  if(seg==='new')return d.login_new||0;
+  if(seg==='paid')return d.login_paid||0;
+  if(seg==='unpaid')return d.login_unpaid||0;
+  if(seg==='ad')return d.login_ad||0;
+  if(seg==='csv')return d.login_csv||0;
+  return 0;
+}
+function segColor(seg){
+  const m={'all':'#3b82f6','new':'#f0aa40','paid':'#9f7fff','unpaid':'#22cce0','ad':'#f06878','csv':'#2dd4a0'};
+  return m[seg]||'#3b82f6';
+}
+
+// ===== ファイル読み込み =====
+function loadFiles(files){
+  Promise.all(Array.from(files).map(f=>new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>{try{res(JSON.parse(e.target.result))}catch{rej(f.name)}};
+    r.readAsText(f);
+  }))).then(results=>{
+    results.forEach(d=>{
+      const slot=d.timeSlot||'night';
+      const idx=D.findIndex(x=>x.date===d.date&&(x.timeSlot||'night')===slot);
+      const nd={
+        date:d.date,
+        timeSlot:d.timeSlot||'night',
+        login:d.login||(d.loginIds?d.loginIds.length:0),
+        reply:d.reply||(d.replyIds?d.replyIds.length:0),
+        login_new:d.login_new||0,
+        login_paid:d.login_paid||0,
+        login_unpaid:d.login_unpaid||0,
+        login_ad:d.login_ad||0,
+        login_csv:d.login_csv||0,
+        loginIds:d.loginIds||[],replyIds:d.replyIds||[]
+      };
+      if(idx>=0)D[idx]=nd;else D.push(nd);
+    });
+    D.sort((a,b)=>a.date.localeCompare(b.date));
+    document.getElementById('dz').classList.add('hidden');
+    document.getElementById('db').classList.add('on');
+    renderAll();
+  }).catch(e=>alert('読み込みエラー: '+e));
+}
+function addMore(){document.getElementById('fi-more').click()}
+document.getElementById('fi').addEventListener('change',e=>loadFiles(e.target.files));
+document.getElementById('fi-more').addEventListener('change',e=>{loadFiles(e.target.files);});
+const dz=document.getElementById('dz');
+['dragenter','dragover'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();document.getElementById('drop-box').classList.add('over')}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();document.getElementById('drop-box').classList.remove('over')}));
+dz.addEventListener('drop',e=>{if(e.dataTransfer.files.length)loadFiles(e.dataTransfer.files)});
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+}));
+
+// ===== 目標計算 =====
+function goalDaily(){
+  const gml=parseInt(document.getElementById('g-month-login').value)||12000;
+  const gmr=parseInt(document.getElementById('g-month-reply').value)||1800;
+  const days=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
+  document.getElementById('g-day-login').textContent=Math.round(gml/days).toLocaleString();
+  document.getElementById('g-day-reply').textContent=Math.round(gmr/days).toLocaleString();
+  return{login:Math.round(gml/days),reply:Math.round(gmr/days),monthLogin:gml,monthReply:gmr};
+}
+
+// ===== LINEAR REGRESSION =====
+function linReg(arr){
+  const n=arr.length;if(n<2)return null;
+  const xs=arr.map((_,i)=>i),ys=arr;
+  const mx=xs.reduce((s,x)=>s+x,0)/n,my=ys.reduce((s,y)=>s+y,0)/n;
+  const ss=xs.reduce((s,x)=>s+(x-mx)**2,0);
+  const sp=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
+  const slope=sp/ss,intercept=my-slope*mx;
+  return{slope,intercept,predict:x=>slope*x+intercept};
+}
+
+// ===== メインレンダリング =====
+
+// ===== noon / night データ分離 =====
+function getNightData(){ return D.filter(d=>(d.timeSlot||'night')==='night'); }
+function getNoonData(){  return D.filter(d=>d.timeSlot==='noon'); }
+
+// 通常のグラフは夜データを基準にする
+function getBaseData(){ return getNightData().length>0?getNightData():D; }
+
+function renderAll(){
+  if(!D.length)return;
+  goalDaily();
+  const _base=getBaseData();
+  const _noon=getNoonData();
+  document.getElementById('data-range').textContent=`${fd(D[0].date)}〜${fd(D[D.length-1].date)} (夜${_base.length}日・昼${_noon.length}日)`;
+  buildAlerts();
+  renderDaily();
+  renderWeekly();
+  renderMonthly();
+  renderCompare();
+  renderSegment('all');
+  renderMTG();
+}
+
+// ===== アラート =====
+function buildAlerts(){
+  const alerts=[];const n=D.length;
+  if(n<8){document.getElementById('alert-area').innerHTML='';return;}
+  const r7=D.slice(-7),p7=D.slice(-14,-7);
+  if(p7.length===7){
+    const rl=r7.reduce((s,d)=>s+d.login,0),pl=p7.reduce((s,d)=>s+d.login,0);
+    const diff=(rl-pl)/pl*100;
+    if(diff<=-15)alerts.push({t:'danger',m:`🚨 直近7日ログイン合計が前週比 ${diff.toFixed(0)}%（${pl}→${rl}）。対策が必要です。`});
+    else if(diff<=-8)alerts.push({t:'warn',m:`⚠️ 直近7日ログインが前週比 ${diff.toFixed(0)}%。やや下降傾向。`});
+    else alerts.push({t:'ok',m:`✅ 直近7日ログイン合計：前週比 ${diff>=0?'+':''}${diff.toFixed(0)}%（${pl}→${rl}）`});
+  }
+  // 最終日の前週同曜日比
+  const last=D[n-1];
+  const same=D.slice(0,-1).reverse().find(d=>new Date(d.date).getDay()===new Date(last.date).getDay());
+  if(same){
+    const diff=(last.login-same.login)/same.login*100;
+    if(diff<=-25)alerts.push({t:'danger',m:`🚨 ${fd(last.date)}(${dow(last.date)}) ログイン${last.login}人：前週同曜日比 ${diff.toFixed(0)}%（${same.login}人）`});
+    else if(diff<=-15)alerts.push({t:'warn',m:`⚠️ ${fd(last.date)}(${dow(last.date)}) 前週同曜日比 ${diff.toFixed(0)}%`});
+  }
+  document.getElementById('alert-area').innerHTML=alerts.map(a=>`<div class="al ${a.t}">${a.m}</div>`).join('');
+}
+
+// ===== 日次 =====
+function renderDaily(){
+  const g=goalDaily();
+  const base=getBaseData();const n=base.length;
+  const noon=getNoonData();
+  // 昼データ：今日の昼 vs 昨日の昼
+  const lastNoon=noon[noon.length-1]||null;
+  const prevNoon=noon.length>=2?noon[noon.length-2]:null;
+  D; // Dは全データ（表示用）
+  const last=base[n-1]||D[D.length-1];
+  const prev=n>=2?base[n-2]:(D.length>=2?D[D.length-2]:null);
+  const same=D.slice(0,-1).reverse().find(d=>new Date(d.date).getDay()===new Date(last.date).getDay());
+  const r7=D.slice(-7);
+  const avg7l=Math.round(r7.reduce((s,d)=>s+d.login,0)/r7.length);
+  const avg7r=Math.round(r7.reduce((s,d)=>s+d.reply,0)/r7.length);
+
+  // 今月進捗
+  const mk=gm(last.date);
+  const thisMonth=D.filter(d=>gm(d.date)===mk);
+  const mLoginSum=thisMonth.reduce((s,d)=>s+d.login,0);
+  const mReplySum=thisMonth.reduce((s,d)=>s+d.reply,0);
+  const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
+  const elapsed=thisMonth.length;
+  const loginProg=Math.min(100,Math.round(mLoginSum/g.monthLogin*100));
+  const replyProg=Math.min(100,Math.round(mReplySum/g.monthReply*100));
+  const loginPace=elapsed>0?Math.round(mLoginSum/elapsed*daysInMonth):0;
+
+  document.getElementById('mc-daily').innerHTML=`
+    <div class="mc ${last.login<g.login*0.75?'red':last.login>=g.login?'green':''}">
+      <div class="ml">最終日ログイン</div><div class="mv">${last.login.toLocaleString()}</div>
+      <div class="ms ${last.login>=g.login?'up':'dn'}">目標${g.login}人 ${last.login>=g.login?'達成':(g.login-last.login)+'人不足'}</div>
+    </div>
+    <div class="mc"><div class="ml">前日比</div>
+      <div class="mv ${prev?last.login>=prev.login?'up':'dn':'eq'}">${prev?ds(last.login,prev.login):'-'}</div>
+      <div class="ms">${prev?prev.login+'人 ('+fd(prev.date)+')':'-'}</div>
+    </div>
+    <div class="mc ${same&&last.login<same.login*0.75?'red':''}">
+      <div class="ml">前週同曜日比</div>
+      <div class="mv ${same?last.login>=same.login?'up':'dn':'eq'}">${same?ds(last.login,same.login):'-'}</div>
+      <div class="ms">${same?same.login+'人 ('+fd(same.date)+dow(same.date)+'曜)':'-'}</div>
+    </div>
+    <div class="mc"><div class="ml">7日平均ログイン</div><div class="mv">${avg7l.toLocaleString()}</div>
+      <div class="ms">目標比 ${Math.round(avg7l/g.login*100)}%</div>
+    </div>
+    <div class="mc"><div class="ml">最終日返信</div><div class="mv" style="color:var(--gn)">${last.reply.toLocaleString()}</div>
+      <div class="ms">返信率 ${pct(last.reply,last.login)}</div>
+    </div>
+    <div class="mc"><div class="ml">7日平均返信</div><div class="mv" style="color:var(--gn)">${avg7r.toLocaleString()}</div>
+      <div class="ms">返信率 ${pct(avg7r,avg7l)}</div>
+    </div>`;
+
+  // 昼データ比較カード（ある場合のみ）
+  const noonCompareHtml = lastNoon ? `
+    <div style="background:rgba(34,204,224,.06);border:1px solid rgba(34,204,224,.25);border-radius:10px;padding:13px 15px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--cy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📸 昼スナップ比較（${fd(lastNoon.date)}）</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
+        <div><div style="font-size:10px;color:var(--dm)">昼ログイン</div>
+          <div style="font-size:20px;font-weight:800;font-family:monospace;color:var(--cy)">${lastNoon.login.toLocaleString()}</div>
+          <div style="font-size:11px;color:${prevNoon?lastNoon.login>=prevNoon.login?'var(--gn)':'var(--rd)':'var(--dm)'}">
+            前日昼比 ${prevNoon?ds(lastNoon.login,prevNoon.login):'-'}${prevNoon?' ('+prevNoon.login+'人)':''}
+          </div>
+        </div>
+        <div><div style="font-size:10px;color:var(--dm)">昼返信</div>
+          <div style="font-size:20px;font-weight:800;font-family:monospace;color:var(--gn)">${lastNoon.reply.toLocaleString()}</div>
+          <div style="font-size:11px;color:${prevNoon?lastNoon.reply>=prevNoon.reply?'var(--gn)':'var(--rd)':'var(--dm)'}">
+            前日昼比 ${prevNoon?ds(lastNoon.reply,prevNoon.reply):'-'}
+          </div>
+        </div>
+        <div><div style="font-size:10px;color:var(--dm)">21時予測（昼×1.8）</div>
+          <div style="font-size:20px;font-weight:800;font-family:monospace;color:var(--og)">${Math.round(lastNoon.login*1.8).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--dm)">目標 ${g.login} ${Math.round(lastNoon.login*1.8)>=g.login?'✅ 達成ペース':'⚠️ 不足ペース'}</div>
+        </div>
+      </div>
+    </div>` : '';
+  document.getElementById('mc-daily').insertAdjacentHTML('afterend', noonCompareHtml);
+  document.getElementById('month-progress').innerHTML=`
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px">📊 今月進捗（${mk.replace('-','年')}月 ${elapsed}/${daysInMonth}日）
+        <span style="font-size:11px;color:var(--dm);font-weight:400;margin-left:8px">このペースで続くと月間 ${loginPace.toLocaleString()}人（目標 ${g.monthLogin.toLocaleString()}人）</span>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-label"><span style="font-size:11px">ログイン累計 ${mLoginSum.toLocaleString()} / ${g.monthLogin.toLocaleString()}</span>
+          <span style="font-size:11px;color:${loginProg>=100?'var(--gn)':loginProg<70?'var(--rd)':'var(--og)'}">${loginProg}%</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:${loginProg}%;background:${loginProg>=100?'var(--gn)':loginProg<70?'var(--rd)':'var(--og)'}"></div></div>
+      </div>
+      <div class="prog-wrap" style="margin-top:8px">
+        <div class="prog-label"><span style="font-size:11px">返信累計 ${mReplySum.toLocaleString()} / ${g.monthReply.toLocaleString()}</span>
+          <span style="font-size:11px;color:${replyProg>=100?'var(--gn)':replyProg<70?'var(--rd)':'var(--og)'}">${replyProg}%</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:${replyProg}%;background:${replyProg>=100?'var(--gn)':replyProg<70?'var(--rd)':'var(--og)'}"></div></div>
+      </div>
+    </div>`;
+
+  const show=D.slice(-30);
+  const labels=show.map(d=>`${fd(d.date)}(${dow(d.date)})`);
+  const alertLine=show.map(d=>{
+    const s=D.slice(0,D.indexOf(d)).reverse().find(x=>new Date(x.date).getDay()===new Date(d.date).getDay());
+    return s?Math.round(s.login*0.75):null;
+  });
+  const alertDays=show.filter((d,i)=>alertLine[i]&&d.login<alertLine[i]).length;
+  document.getElementById('badge-daily').innerHTML=alertDays>0?`<span class="badge badge-red">アラート${alertDays}日</span>`:'';
+
+  kd('daily');
+  cMap['daily']=new Chart(document.getElementById('c-daily'),{
+    data:{labels,datasets:[
+      {type:'bar',data:show.map(d=>d.login),backgroundColor:show.map((d,i)=>d.login<(alertLine[i]||0)?'rgba(240,104,120,.7)':'rgba(59,130,246,.65)'),borderRadius:3},
+      {type:'line',data:show.map(d=>d.reply),borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:2},
+      {type:'line',data:show.map(()=>g.login),borderColor:'rgba(240,170,64,.55)',backgroundColor:'transparent',borderDash:[5,4],pointRadius:0,borderWidth:1.5},
+      {type:'line',data:alertLine,borderColor:'rgba(240,104,120,.5)',backgroundColor:'transparent',borderDash:[3,3],pointRadius:0,borderWidth:1.5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:15}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  // 曜日別平均
+  const bd=Array(7).fill(null).map(()=>({l:0,r:0,c:0}));
+  D.forEach(d=>{const dw=new Date(d.date).getDay();bd[dw].l+=d.login;bd[dw].r+=d.reply;bd[dw].c++;});
+  const al=bd.map(b=>b.c?Math.round(b.l/b.c):0);
+  const ar=bd.map(b=>b.c?Math.round(b.r/b.c):0);
+  const maxA=Math.max(...al);
+  kd('weekday');
+  cMap['weekday']=new Chart(document.getElementById('c-weekday'),{
+    data:{labels:DOW,datasets:[
+      {type:'bar',data:al,backgroundColor:al.map(v=>v===maxA?'rgba(240,170,64,.75)':'rgba(59,130,246,.55)'),borderRadius:4},
+      {type:'line',data:ar,borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:13}}},y:{ticks:{font:{size:11}}}}}
+  });
+}
+
+// ===== 週次 =====
+function getWeeks(){
+  const m={};
+  getBaseData().forEach(d=>{const k=gw(d.date);if(!m[k])m[k]={key:k,days:[],l:0,r:0};m[k].days.push(d);m[k].l+=d.login;m[k].r+=d.reply;});
+  return Object.values(m).sort((a,b)=>a.key.localeCompare(b.key));
+}
+function renderWeekly(){
+  const wks=getWeeks();const n=wks.length;if(!n)return;
+  const lw=wks[n-1],pw=n>=2?wks[n-2]:null;
+  document.getElementById('mc-weekly').innerHTML=`
+    <div class="mc ${pw&&lw.l<pw.l*0.85?'red':pw&&lw.l>pw.l?'green':''}">
+      <div class="ml">今週ログイン合計</div><div class="mv">${lw.l.toLocaleString()}</div>
+      <div class="ms">日平均 ${Math.round(lw.l/lw.days.length).toLocaleString()}（${lw.days.length}日）</div>
+    </div>
+    <div class="mc"><div class="ml">今週返信合計</div><div class="mv" style="color:var(--gn)">${lw.r.toLocaleString()}</div>
+      <div class="ms">返信率 ${pct(lw.r,lw.l)}</div>
+    </div>
+    ${pw?`<div class="mc ${lw.l<pw.l*0.85?'red':lw.l>pw.l?'green':''}">
+      <div class="ml">前週比（ログイン）</div>
+      <div class="mv ${lw.l>=pw.l?'up':'dn'}">${ds(lw.l,pw.l)}</div>
+      <div class="ms">先週 ${pw.l.toLocaleString()}</div>
+    </div>
+    <div class="mc"><div class="ml">前週比（返信）</div>
+      <div class="mv ${lw.r>=pw.r?'up':'dn'}">${ds(lw.r,pw.r)}</div>
+      <div class="ms">先週 ${pw.r.toLocaleString()}</div>
+    </div>`:``}`;
+
+  kd('weekly');
+  cMap['weekly']=new Chart(document.getElementById('c-weekly'),{
+    data:{labels:wks.map(w=>fd(w.key)+'週'),datasets:[
+      {type:'bar',data:wks.map(w=>w.l),backgroundColor:'rgba(59,130,246,.6)',borderRadius:4},
+      {type:'line',data:wks.map(w=>w.r),borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},autoSkip:true,maxTicksLimit:14}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  const wow=wks.map((w,i)=>i===0?null:Math.round((w.l-wks[i-1].l)/wks[i-1].l*100));
+  kd('wow');
+  cMap['wow']=new Chart(document.getElementById('c-wow'),{
+    data:{labels:wks.map(w=>fd(w.key)+'週'),datasets:[{
+      type:'bar',data:wow,
+      backgroundColor:wow.map(v=>v===null?'transparent':v>=0?'rgba(16,185,129,.65)':'rgba(240,104,120,.65)'),borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},autoSkip:true,maxTicksLimit:14}},y:{ticks:{font:{size:11},callback:v=>v+'%'}}}}
+  });
+
+  document.getElementById('tb-weekly').innerHTML=wks.map((w,i)=>{
+    const p=i>0?wks[i-1]:null;
+    return`<tr><td>${fd(w.key)}週</td><td>${w.days.length}</td><td>${w.l.toLocaleString()}</td><td>${w.r.toLocaleString()}</td>
+      <td>${Math.round(w.l/w.days.length).toLocaleString()}</td><td>${Math.round(w.r/w.days.length).toLocaleString()}</td>
+      <td>${pct(w.r,w.l)}</td>
+      <td class="${p?dc(w.l,p.l):''}">${p?ds(w.l,p.l):'-'}</td>
+      <td class="${p?dc(w.r,p.r):''}">${p?ds(w.r,p.r):'-'}</td></tr>`;
+  }).join('');
+}
+
+// ===== 月次 =====
+function getMonths(){
+  const m={};
+  getBaseData().forEach(d=>{const k=gm(d.date);if(!m[k])m[k]={key:k,days:[],l:0,r:0};m[k].days.push(d);m[k].l+=d.login;m[k].r+=d.reply;});
+  return Object.values(m).sort((a,b)=>a.key.localeCompare(b.key));
+}
+function renderMonthly(){
+  const ms=getMonths();const n=ms.length;if(!n)return;
+  const lm=ms[n-1],pm=n>=2?ms[n-2]:null;
+  document.getElementById('mc-monthly').innerHTML=`
+    <div class="mc ${pm&&lm.l<pm.l*0.85?'red':pm&&lm.l>pm.l?'green':''}">
+      <div class="ml">今月ログイン累計</div><div class="mv">${lm.l.toLocaleString()}</div>
+      <div class="ms">日平均 ${Math.round(lm.l/lm.days.length).toLocaleString()}（${lm.days.length}日）</div>
+    </div>
+    <div class="mc"><div class="ml">今月返信累計</div><div class="mv" style="color:var(--gn)">${lm.r.toLocaleString()}</div>
+      <div class="ms">返信率 ${pct(lm.r,lm.l)}</div>
+    </div>
+    ${pm?`<div class="mc ${lm.l<pm.l*0.85?'red':lm.l>pm.l?'green':''}">
+      <div class="ml">前月比（ログイン）</div><div class="mv ${lm.l>=pm.l?'up':'dn'}">${ds(lm.l,pm.l)}</div>
+      <div class="ms">先月 ${pm.l.toLocaleString()}</div>
+    </div>
+    <div class="mc"><div class="ml">前月比（返信）</div><div class="mv ${lm.r>=pm.r?'up':'dn'}">${ds(lm.r,pm.r)}</div>
+      <div class="ms">先月 ${pm.r.toLocaleString()}</div>
+    </div>`:``}`;
+
+  // 予測（線形回帰）
+  const loginVals=ms.map(m=>Math.round(m.l/m.days.length));
+  const reg=linReg(loginVals);
+  const forecastLabels=[...ms.map(m=>m.key.replace('-','年')+'月'),'1ヶ月後','2ヶ月後','3ヶ月後'];
+  const forecastLogin=[...ms.map(m=>m.l),null,null,null];
+  const trendLine=[...loginVals.map((_,i)=>Math.round(reg.predict(i)*ms[ms.map(m=>Math.round(m.l/m.days.length)).indexOf(_)].days.length||reg.predict(i)*30))];
+  // 直近3ヶ月の平均日数で予測
+  const avgDays=Math.round(ms.slice(-3).reduce((s,m)=>s+m.days.length,0)/Math.min(3,ms.length));
+  [1,2,3].forEach(i=>trendLine.push(Math.round(reg.predict(ms.length-1+i)*avgDays)));
+
+  kd('monthly');
+  cMap['monthly']=new Chart(document.getElementById('c-monthly'),{
+    data:{labels:forecastLabels,datasets:[
+      {type:'bar',data:forecastLogin,backgroundColor:'rgba(59,130,246,.6)',borderRadius:4},
+      {type:'line',data:ms.map(m=>m.r),borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2},
+      {type:'line',data:trendLine,borderColor:'rgba(240,170,64,.65)',backgroundColor:'transparent',borderDash:[6,4],pointRadius:3,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  // 月内週別
+  const recent2=ms.slice(-2);
+  const weeklyInMonth=recent2.map(m=>{
+    const wm={};m.days.forEach(d=>{const wn=Math.ceil(new Date(d.date).getDate()/7);wm[wn]=(wm[wn]||0)+d.login;});
+    return[1,2,3,4,5].map(w=>wm[w]||null);
+  });
+  kd('week-in-month');
+  cMap['week-in-month']=new Chart(document.getElementById('c-week-in-month'),{
+    data:{labels:['第1週','第2週','第3週','第4週','第5週'],datasets:recent2.map((m,i)=>({
+      type:'line',label:m.key.replace('-','年')+'月',
+      data:weeklyInMonth[i],
+      borderColor:i===recent2.length-1?'#3b82f6':'rgba(59,130,246,.4)',
+      borderDash:i===recent2.length-1?[]:[5,4],
+      backgroundColor:'transparent',tension:0.3,pointRadius:5,borderWidth:2
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{font:{size:11},color:'#6b7194'}}},
+      scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  // 前月比率
+  const ratios=ms.map((m,i)=>i===0?100:ms[i-1].l>0?Math.round(m.l/ms[i-1].l*100):100);
+  kd('mom-ratio');
+  cMap['mom-ratio']=new Chart(document.getElementById('c-mom-ratio'),{
+    data:{labels:ms.map(m=>m.key.replace('-','年')+'月'),datasets:[{
+      type:'bar',data:ratios,
+      backgroundColor:ratios.map(v=>v>=100?'rgba(16,185,129,.65)':'rgba(240,104,120,.65)'),borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11},callback:v=>v+'%'}}}}
+  });
+
+  document.getElementById('tb-monthly').innerHTML=ms.map((m,i)=>{
+    const p=i>0?ms[i-1]:null;
+    return`<tr><td>${m.key.replace('-','年')}月</td><td>${m.days.length}</td>
+      <td>${m.l.toLocaleString()}</td><td>${m.r.toLocaleString()}</td>
+      <td>${Math.round(m.l/m.days.length).toLocaleString()}</td><td>${Math.round(m.r/m.days.length).toLocaleString()}</td>
+      <td>${pct(m.r,m.l)}</td>
+      <td class="${p?dc(m.l,p.l):''}">${p?ds(m.l,p.l):'-'}</td>
+      <td class="${p?dc(m.r,p.r):''}">${p?ds(m.r,p.r):'-'}</td></tr>`;
+  }).join('');
+}
+
+// ===== 比較 =====
+function renderCompare(){
+  const mmap={};D.forEach(d=>{const k=gm(d.date);if(!mmap[k])mmap[k]=[];mmap[k].push(d);});
+  const mks=Object.keys(mmap).sort();
+  if(mks.length>=2){
+    const curr=mmap[mks[mks.length-1]],prev=mmap[mks[mks.length-2]];
+    const maxD=Math.max(curr.length,prev.length);
+    kd('mom');
+    cMap['mom']=new Chart(document.getElementById('c-mom'),{
+      data:{labels:Array.from({length:maxD},(_,i)=>`${i+1}日`),datasets:[
+        {type:'line',data:curr.map(d=>d.login),borderColor:'#3b82f6',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:2},
+        {type:'line',data:prev.map(d=>d.login),borderColor:'rgba(59,130,246,.35)',backgroundColor:'transparent',borderDash:[5,4],tension:0.3,pointRadius:1,borderWidth:1.5},
+        {type:'line',data:curr.map(d=>d.reply),borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:2},
+        {type:'line',data:prev.map(d=>d.reply),borderColor:'rgba(16,185,129,.35)',backgroundColor:'transparent',borderDash:[5,4],tension:0.3,pointRadius:1,borderWidth:1.5}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{font:{size:11},autoSkip:true,maxTicksLimit:15}},y:{ticks:{font:{size:11}}}}}
+    });
+  }
+  // 今週vs先週
+  const wks=getWeeks();const wn=wks.length;
+  if(wn>=2){
+    const cw=Array(7).fill(null),pw2=Array(7).fill(null);
+    wks[wn-1].days.forEach(d=>{cw[new Date(d.date).getDay()]=d.login;});
+    wks[wn-2].days.forEach(d=>{pw2[new Date(d.date).getDay()]=d.login;});
+    kd('wow2');
+    cMap['wow2']=new Chart(document.getElementById('c-wow2'),{
+      data:{labels:DOW,datasets:[
+        {type:'bar',label:'今週',data:cw,backgroundColor:'rgba(59,130,246,.65)',borderRadius:4},
+        {type:'bar',label:'先週',data:pw2,backgroundColor:'rgba(59,130,246,.25)',borderRadius:4}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{font:{size:11},color:'#6b7194'}}},
+        scales:{x:{ticks:{font:{size:13}}},y:{ticks:{font:{size:11}}}}}
+    });
+  }
+}
+
+// ===== セグメント =====
+let currentSeg='all';
+function setSeg(seg,btn){
+  currentSeg=seg;
+  document.querySelectorAll('.stbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderSegment(seg);
+}
+function renderSegment(seg){
+  const color=segColor(seg);
+  document.getElementById('seg-chart-title').textContent=
+    {all:'全体',new:'新規（0日目）',paid:'課金者',unpaid:'未課金者',ad:'純広告経由',csv:'CSV系'}[seg]+' 日次推移';
+
+  const show=D.slice(-30);
+  const vals=show.map(d=>segVal(d,seg));
+  const n=D.length;
+  const last=D[n-1],prev=n>=2?D[n-2]:null;
+  const lv=segVal(last,seg),pv=prev?segVal(prev,seg):null;
+  const r7=D.slice(-7);
+  const avg7=Math.round(r7.reduce((s,d)=>s+segVal(d,seg),0)/r7.length);
+
+  document.getElementById('mc-seg').innerHTML=`
+    <div class="mc"><div class="ml">最終日（${seg==='all'?'全体':{new:'新規',paid:'課金者',unpaid:'未課金者',ad:'純広告',csv:'CSV系'}[seg]}）</div>
+      <div class="mv" style="color:${color}">${lv.toLocaleString()}</div>
+      <div class="ms ${pv?lv>=pv?'up':'dn':'eq'}">前日比 ${pv?ds(lv,pv):'-'}</div>
+    </div>
+    <div class="mc"><div class="ml">7日平均</div><div class="mv">${avg7.toLocaleString()}</div></div>
+    ${seg==='all'?`<div class="mc"><div class="ml">新規 / 課金者 / 未課金者</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:6px">
+        <span style="color:#f0aa40">${segVal(last,'new')}</span> / 
+        <span style="color:#9f7fff">${segVal(last,'paid')}</span> / 
+        <span style="color:#22cce0">${segVal(last,'unpaid')}</span>
+      </div><div class="ms">新規/課金/未課金</div></div>`:``}`;
+
+  kd('seg');
+  cMap['seg']=new Chart(document.getElementById('c-seg'),{
+    data:{labels:show.map(d=>`${fd(d.date)}(${dow(d.date)})`),datasets:[{
+      type:seg==='all'?'bar':'line',data:vals,
+      borderColor:color,backgroundColor:seg==='all'?`${color}aa`:`${color}22`,
+      fill:seg!=='all',tension:0.3,pointRadius:2,borderWidth:2,borderRadius:3
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},maxRotation:45,autoSkip:true,maxTicksLimit:15}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  // 全セグメント週次
+  const wks=getWeeks();
+  kd('seg-all');
+  cMap['seg-all']=new Chart(document.getElementById('c-seg-all'),{
+    data:{labels:wks.map(w=>fd(w.key)+'週'),datasets:[
+      {type:'line',label:'新規',data:wks.map(w=>w.days.reduce((s,d)=>s+segVal(d,'new'),0)),borderColor:'#f0aa40',backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:2},
+      {type:'line',label:'課金者',data:wks.map(w=>w.days.reduce((s,d)=>s+segVal(d,'paid'),0)),borderColor:'#9f7fff',backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:2},
+      {type:'line',label:'未課金者',data:wks.map(w=>w.days.reduce((s,d)=>s+segVal(d,'unpaid'),0)),borderColor:'#22cce0',backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},autoSkip:true,maxTicksLimit:14}},y:{ticks:{font:{size:11}}}}}
+  });
+}
+
+// ===== MTG =====
+function renderMTG(){
+  const n=D.length;
+  const total=D.reduce((s,d)=>s+d.login,0);
+  const avgL=Math.round(total/n);
+  const totalR=D.reduce((s,d)=>s+d.reply,0);
+  const ms=getMonths();
+  const wks=getWeeks();
+
+  document.getElementById('mc-mtg').innerHTML=`
+    <div class="mc"><div class="ml">全期間ログイン（のべ合計）</div><div class="mv">${total.toLocaleString()}</div><div class="ms">${n}日分</div></div>
+    <div class="mc"><div class="ml">全期間日次平均</div><div class="mv">${avgL.toLocaleString()}</div><div class="ms">ログイン/日</div></div>
+    <div class="mc"><div class="ml">全期間返信（のべ合計）</div><div class="mv" style="color:var(--gn)">${totalR.toLocaleString()}</div><div class="ms">日平均 ${Math.round(totalR/n)}</div></div>
+    <div class="mc"><div class="ml">全期間平均返信率</div><div class="mv">${pct(totalR,total)}</div></div>`;
+
+  // トレンド予測
+  const wAvg=wks.map(w=>Math.round(w.l/w.days.length));
+  const reg=linReg(wAvg);
+  const futureLabels=[...wks.map(w=>fd(w.key)),'1週後','2週後','3週後','4週後','5週後','6週後','7週後','8週後','9週後','10週後','11週後','12週後'];
+  const trendFull=wAvg.map((_,i)=>Math.round(reg.predict(i)));
+  [1,2,3,4,5,6,7,8,9,10,11,12].forEach(i=>trendFull.push(Math.round(reg.predict(wAvg.length-1+i))));
+  const actualFull=[...wAvg,...Array(12).fill(null)];
+
+  kd('mtg-trend');
+  cMap['mtg-trend']=new Chart(document.getElementById('c-mtg-trend'),{
+    data:{labels:futureLabels,datasets:[
+      {type:'line',data:actualFull,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:0.4,pointRadius:3,borderWidth:2},
+      {type:'line',data:trendFull,borderColor:'rgba(240,170,64,.65)',backgroundColor:'transparent',borderDash:[6,4],pointRadius:2,borderWidth:2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},autoSkip:true,maxTicksLimit:16}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  const ratios=ms.map((m,i)=>i===0?100:ms[i-1].l>0?Math.round(m.l/ms[i-1].l*100):100);
+  kd('mtg-ratio');
+  cMap['mtg-ratio']=new Chart(document.getElementById('c-mtg-ratio'),{
+    data:{labels:ms.map(m=>m.key.replace('-','年')+'月'),datasets:[{
+      type:'bar',data:ratios,
+      backgroundColor:ratios.map(v=>v>=100?'rgba(16,185,129,.65)':'rgba(240,104,120,.65)'),borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11},callback:v=>v+'%'}}}}
+  });
+
+  // インサイト
+  const slope3m=reg.slope;
+  const trend=slope3m>1?'上昇傾向':slope3m<-1?'下降傾向':'横ばい';
+  const projected3m=Math.round(reg.predict(wks.length+11)); // 3ヶ月後の週次平均予測
+  const projected3mMonth=projected3m*30;
+
+  let insight=`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">📋 MTG用インサイトサマリー</div>
+    <div style="font-size:12px;line-height:2;color:var(--tx)">
+    <div>・トレンド：<span style="color:${slope3m>1?'var(--gn)':slope3m<-1?'var(--rd)':'var(--dm)'};font-weight:700">${trend}</span>（週次平均の傾き ${slope3m>0?'+':''}${slope3m.toFixed(1)}/週）</div>
+    <div>・このペースが続くと3ヶ月後の月間ログインは約 <span style="color:var(--og);font-weight:700;font-family:'JetBrains Mono',monospace">${projected3mMonth.toLocaleString()}人</span> と予測</div>`;
+
+  if(ms.length>=2){
+    const lm=ms[ms.length-1],pm=ms[ms.length-2];
+    const diff=(lm.l-pm.l)/pm.l*100;
+    insight+=`<div>・直近の月次変化：${diff>=0?'▲':'▼'}${Math.abs(diff).toFixed(1)}%（${pm.key.replace('-','年')}月 ${pm.l.toLocaleString()}→${lm.key.replace('-','年')}月 ${lm.l.toLocaleString()}）</div>`;
+  }
+  if(ms.length>=1){
+    const lm=ms[ms.length-1];
+    const newCount=lm.days.reduce((s,d)=>s+(d.login_new||0),0);
+    if(newCount>0)insight+=`<div>・今月の新規（0日目）累計：<span style="color:var(--og);font-weight:700">${newCount.toLocaleString()}人</span></div>`;
+  }
+  insight+=`</div></div>`;
+  document.getElementById('mtg-insight').innerHTML=insight;
+}
+</script>
+</body>
+</html>

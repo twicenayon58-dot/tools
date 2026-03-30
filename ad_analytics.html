@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>広告集計ツール</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root {
+  --bg:#080c14;--s1:#0f1623;--s2:#1a2233;--s3:#243048;--border:#2a3a55;
+  --accent:#3b82f6;--accent-dim:rgba(59,130,246,0.15);
+  --green:#10b981;--green-dim:rgba(16,185,129,0.12);
+  --amber:#f59e0b;--red:#ef4444;
+  --text:#e8edf5;--text2:#8899bb;--text3:#4a5a7a;
+  --mono:'JetBrains Mono',monospace;--sans:'Noto Sans JP',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* Header */
+header{background:var(--s1);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:20px;height:52px;flex-shrink:0}
+header h1{font-size:15px;font-weight:700;letter-spacing:.05em;white-space:nowrap}
+header h1 span{color:var(--accent)}
+.tabs{display:flex;gap:4px}
+.tab-btn{padding:6px 16px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--text2);cursor:pointer;font-size:13px;font-family:var(--sans);transition:all .15s}
+.tab-btn.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.tab-btn:hover:not(.active){background:var(--s2);color:var(--text)}
+
+main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+#tab-aggregate{display:flex;flex-direction:column;height:100%}
+
+/* Controls */
+.controls{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex-shrink:0}
+.drop-zone{border:1.5px dashed var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;transition:all .2s;text-align:center;min-width:150px;background:var(--s2);position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:var(--accent-dim)}
+.drop-zone.loaded{border-color:var(--green);border-style:solid;background:var(--green-dim)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-icon{font-size:16px;display:block;margin-bottom:1px}
+.dz-label{font-size:11px;color:var(--text2);font-weight:500}
+.drop-zone.loaded .dz-label{color:var(--green)}
+.date-group{display:flex;align-items:center;gap:6px}
+.date-group label{font-size:11px;color:var(--text2);white-space:nowrap}
+input[type=date]{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:6px;font-size:12px;font-family:var(--sans)}
+input[type=date]:focus{outline:none;border-color:var(--accent)}
+.toggle-label{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text2);user-select:none;white-space:nowrap}
+.toggle{width:34px;height:18px;background:var(--s3);border-radius:9px;position:relative;transition:background .2s;flex-shrink:0}
+.toggle::after{content:'';position:absolute;width:12px;height:12px;border-radius:50%;background:var(--text2);top:3px;left:3px;transition:all .2s}
+.toggle.on{background:var(--accent)}
+.toggle.on::after{transform:translateX(16px);background:#fff}
+.btn{padding:6px 13px;border-radius:6px;border:1px solid var(--border);background:var(--s2);color:var(--text);cursor:pointer;font-size:12px;font-family:var(--sans);transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--s3);border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:#2563eb}
+.btn.green{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.btn.green:hover{background:rgba(16,185,129,.25)}
+
+/* Table */
+.table-wrap{flex:1;overflow:auto;padding:12px 16px}
+table{border-collapse:collapse;font-size:11.5px;white-space:nowrap}
+thead th{background:var(--s2);padding:7px 10px;text-align:center;font-weight:600;font-size:10.5px;color:var(--text2);letter-spacing:.04em;border-bottom:2px solid var(--border);border-right:1px solid var(--border);position:sticky;top:0;z-index:2}
+thead th.th-check{position:sticky;left:0;z-index:3;background:var(--s2);width:32px;min-width:32px;border-right:1px solid var(--border)}
+thead th.th-code{text-align:left;min-width:170px;position:sticky;left:32px;z-index:3;background:var(--s2);border-right:2px solid var(--border)}
+thead .grp th{background:var(--s1);padding:4px 6px;font-size:10px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid rgba(42,58,85,.6);transition:background .1s}
+tbody tr:hover{background:rgba(26,34,51,.8)}
+tbody tr.stopped{opacity:.45}
+td{padding:7px 10px;text-align:right;border-right:1px solid rgba(42,58,85,.4);font-family:var(--mono);font-size:11.5px}
+td.td-check{text-align:center;position:sticky;left:0;background:var(--bg);z-index:1;border-right:1px solid var(--border)}
+tr:hover td.td-check{background:rgba(26,34,51,.8)}
+td.td-code{text-align:left;font-family:var(--sans);font-weight:500;font-size:12px;position:sticky;left:32px;background:var(--bg);z-index:1;border-right:2px solid var(--border)}
+tr:hover td.td-code{background:rgba(26,34,51,.8)}
+.cbadge{display:inline-block;font-size:9px;padding:1px 4px;border-radius:3px;margin-left:5px;vertical-align:middle;font-family:var(--sans);font-weight:600}
+.b-af{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(59,130,246,.5)}
+.b-manual{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.4)}
+.b-stopped{background:var(--s3);color:var(--text3);border:1px solid var(--border)}
+td.num{color:var(--accent);font-weight:600}
+td.money{color:var(--green)}
+td.grpsep{border-left:2px solid var(--border)}
+.cinput{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:3px 7px;border-radius:4px;font-size:11px;font-family:var(--mono);width:95px;text-align:right}
+.cinput:focus{outline:none;border-color:var(--accent)}
+.cfixed{color:var(--text2);font-size:11px}
+.no-data{padding:60px;text-align:center;color:var(--text3)}
+.no-data .icon{font-size:40px;margin-bottom:14px}
+.no-data p{font-size:14px;line-height:1.9}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:22px;min-width:340px;max-width:480px;width:90%}
+.modal h3{font-size:14px;color:var(--accent);margin-bottom:14px;font-weight:600}
+.modal-actions{display:flex;gap:10px;margin-top:18px;justify-content:flex-end}
+.chk-list{max-height:320px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;background:var(--s2)}
+.chk-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(42,58,85,.4);cursor:pointer}
+.chk-item:last-child{border-bottom:none}
+.chk-item:hover{background:var(--s3)}
+.chk-item label{cursor:pointer;font-size:12px;flex:1;font-family:var(--mono)}
+.chk-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
+.chk-all{display:flex;gap:8px;margin-bottom:8px}
+
+/* Settings */
+#tab-settings{padding:20px;overflow-y:auto;height:100%}
+.sec{background:var(--s1);border:1px solid var(--border);border-radius:10px;margin-bottom:18px}
+.sec h3{padding:13px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--accent);font-weight:600;letter-spacing:.04em}
+.slist{padding:10px 16px}
+.srow{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(42,58,85,.35);flex-wrap:wrap}
+.srow:last-child{border-bottom:none}
+.srow .cname{font-family:var(--mono);font-size:12px;min-width:175px;color:var(--text)}
+.srow label{font-size:11px;color:var(--text2);white-space:nowrap}
+.srow select,.srow input[type=number]{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:5px;font-size:12px;font-family:var(--sans)}
+.srow select:focus,.srow input:focus{outline:none;border-color:var(--accent)}
+.srow input[type=number]{width:80px;font-family:var(--mono)}
+.stag{display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px}
+.stag-on{background:var(--green-dim);color:var(--green)}
+.stag-off{background:var(--s3);color:var(--text3)}
+.add-form{padding:14px 16px;border-top:1px solid var(--border)}
+.add-form h4{font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:500}
+.paste-area{width:100%;min-height:70px;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:9px;border-radius:6px;font-family:var(--mono);font-size:12px;resize:vertical}
+.paste-area:focus{outline:none;border-color:var(--accent)}
+.add-row{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;margin-top:9px}
+.add-row select{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:5px 9px;border-radius:5px;font-size:12px}
+#af-opts{display:none;align-items:center;gap:8px;flex-wrap:wrap}
+.del-btn{background:transparent;border:1px solid var(--border);color:var(--text3);padding:3px 7px;border-radius:4px;cursor:pointer;font-size:11px;transition:all .15s}
+.del-btn:hover{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>広告<span>集計</span>ツール</h1>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('aggregate')">📊 集計</button>
+      <button class="tab-btn" onclick="switchTab('settings')">⚙️ 設定</button>
+    </div>
+  </header>
+  <main>
+    <!-- 集計タブ -->
+    <div id="tab-aggregate">
+      <div class="controls">
+        <div style="display:flex;gap:10px">
+          <div class="drop-zone" id="dz-csv" ondragover="dzOver(event,'csv')" ondragleave="dzOut('csv')" ondrop="dzDrop(event,'csv')">
+            <input type="file" accept=".csv" onchange="onFile(event,'csv')">
+            <span class="dz-icon">📋</span>
+            <div class="dz-label" id="lbl-csv">CSVをドロップ</div>
+          </div>
+          <div class="drop-zone" id="dz-excel" ondragover="dzOver(event,'excel')" ondragleave="dzOut('excel')" ondrop="dzDrop(event,'excel')">
+            <input type="file" accept=".xlsx,.xls" onchange="onFile(event,'excel')">
+            <span class="dz-icon">📊</span>
+            <div class="dz-label" id="lbl-excel">Excelをドロップ</div>
+          </div>
+        </div>
+        <div class="date-group">
+          <label>登録日</label>
+          <input type="date" id="d-from" onchange="S.dateFrom=this.value;render()">
+          <span style="color:var(--text3)">〜</span>
+          <input type="date" id="d-to" onchange="S.dateTo=this.value;render()">
+          <button class="btn" onclick="clearDates()">クリア</button>
+        </div>
+        <label class="toggle-label" onclick="toggleStopped()">
+          <div class="toggle" id="tog-stopped"></div>
+          停止中を表示
+        </label>
+        <button class="btn green" onclick="openExport()">📥 CSVエクスポート</button>
+      </div>
+      <div class="table-wrap">
+        <div id="tbl">
+          <div class="no-data"><div class="icon">📂</div><p>CSVとExcelを上にドロップしてください</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 設定タブ -->
+    <div id="tab-settings" style="display:none">
+      <div class="sec">
+        <h3>📋 広告コード設定</h3>
+        <div class="slist" id="slist"></div>
+        <div class="add-form">
+          <h4>＋ 新しい広告コードを追加（複数まとめて貼り付けOK）</h4>
+          <textarea class="paste-area" id="new-codes" placeholder="new_code_001&#10;new_code_002"></textarea>
+          <div class="add-row">
+            <div style="display:flex;align-items:center;gap:7px">
+              <label style="font-size:11px;color:var(--text2)">種別</label>
+              <select id="new-type" onchange="document.getElementById('af-opts').style.display=this.value==='af'?'flex':'none'">
+                <option value="manual">手動（運用広告）</option>
+                <option value="af">AF（登録数×単価）</option>
+              </select>
+            </div>
+            <div id="af-opts" style="align-items:center;gap:7px;flex-wrap:wrap">
+              <label style="font-size:11px;color:var(--text2)">単価¥</label>
+              <input type="number" id="new-price" value="0" min="0" step="110" style="width:80px">
+              <label style="font-size:11px;color:var(--text2)">年齢下限</label>
+              <input type="number" id="new-age" value="0" min="0" max="99" style="width:58px">
+              <label style="font-size:11px;color:var(--text2)">性別</label>
+              <select id="new-gender">
+                <option value="all">制限なし</option>
+                <option value="f">女性</option>
+                <option value="m">男性</option>
+              </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px">
+              <label style="font-size:11px;color:var(--text2)">状態</label>
+              <select id="new-status">
+                <option value="active">稼働中</option>
+                <option value="stopped">停止中</option>
+              </select>
+            </div>
+            <button class="btn primary" onclick="addCodes()">追加する</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- エクスポートモーダル -->
+<div id="exp-modal" class="modal-bg" style="display:none" onclick="if(event.target.id==='exp-modal')closeModal()">
+  <div class="modal">
+    <h3>📥 CSVエクスポート — 広告コードを選択</h3>
+    <div class="chk-all">
+      <button class="btn" onclick="checkAll(true)">全選択</button>
+      <button class="btn" onclick="checkAll(false)">全解除</button>
+    </div>
+    <div class="chk-list" id="exp-list"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn primary" onclick="doExport()">エクスポート</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== デフォルト設定 =====
+const DEFAULTS = [
+  {code:'poets007_wb_line',type:'manual',price:0,ageMin:0,gender:'all',status:'active'},
+  {code:'tabu003',        type:'manual',price:0,ageMin:0,gender:'all',status:'active'},
+  {code:'spkaiC',         type:'af',price:3850,ageMin:50,gender:'f',status:'active'},
+  {code:'spkaiD',         type:'af',price:5500,ageMin:50,gender:'f',status:'active'},
+  {code:'spkaiE_mail',    type:'af',price:4950,ageMin:40,gender:'f',status:'active'},
+  {code:'kaiunK_mail',    type:'af',price:6600,ageMin:20,gender:'all',status:'active'},
+  {code:'kaiunL_mail',    type:'af',price:8800,ageMin:50,gender:'f',status:'active'},
+  {code:'kaiun_I_mail',   type:'af',price:3520,ageMin:40,gender:'f',status:'active'},
+  {code:'kaiunJ_seo_mail',type:'af',price:6600,ageMin:0, gender:'all',status:'active'},
+  {code:'LINE_yu01',      type:'af',price:4400,ageMin:0, gender:'all',status:'active'},
+  {code:'yh_af01',        type:'af',price:5500,ageMin:0, gender:'all',status:'active'},
+  {code:'meta_af01',      type:'af',price:4400,ageMin:0, gender:'all',status:'active'},
+  {code:'bigo_line01',    type:'af',price:4000,ageMin:0, gender:'all',status:'stopped'},
+  {code:'lap010_wb_line', type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'gdn_line_ishi',  type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'rf_Tura',        type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'sp_tokumei_afline',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'kinun_age_afline',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'rojikado01',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'ydn_line_nin',   type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'you_move01',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'you_move_line',  type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'rojikado_line_01',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'bigobigo02',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+];
+
+// ===== State =====
+const S = {
+  csvUsers: [],       // CSVから取得したユーザー
+  excelMap: {},       // {masterID: {sendCount, hasLogin}}
+  settings: [],
+  manualCosts: {},
+  dateFrom: '', dateTo: '',
+  showStopped: false,
+  csvLoaded: false, excelLoaded: false,
+  lastRows: [],
+};
+
+// ===== ストレージ =====
+async function loadSettings() {
+  try {
+    const r = await window.storage.get('adtool_v4');
+    S.settings = r ? JSON.parse(r.value) : DEFAULTS.map(d=>({...d}));
+  } catch { S.settings = DEFAULTS.map(d=>({...d})); }
+}
+async function saveSetting() {
+  try { await window.storage.set('adtool_v4', JSON.stringify(S.settings)); } catch {}
+}
+
+// ===== CSV パース =====
+// col0=マスターID, col3=性別, col12=広告コード, col16=生年月日
+// col21=本登録日時, col27=総購入金額, col29=入金回数
+async function parseCSV(file) {
+  const buf = await file.arrayBuffer();
+  let text;
+  try { text = new TextDecoder('shift-jis').decode(buf); }
+  catch { text = new TextDecoder('utf-8').decode(buf); }
+  const lines = text.split(/\r?\n/);
+  const users = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const c = line.split(',');
+    if (c.length < 30) continue;
+    const mid = (c[0]||'').trim();
+    if (!mid || !/^\d+$/.test(mid)) continue;
+    users.push({
+      masterID: mid,
+      adCode:   (c[12]||'').trim(),
+      gender:   (c[3]||'').trim(),      // 'm' or 'f'
+      birthDate:(c[16]||'').trim(),
+      regDate:  (c[21]||'').trim(),
+      totalPurchase: parseInt(c[27])||0,
+      payCount:      parseInt(c[29])||0,
+    });
+  }
+  return users;
+}
+
+// ===== Excel パース =====
+// 4行1ユーザー、index2から開始
+// row1[1]=マスターID, row1[6]="送信X"（送信数）
+// row2[12]=最終ログイン（M列）、'-'またはnullなら未ログイン、時刻があればログインあり
+function parseExcel(wb) {
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, {header:1, defval:null});
+  const map = {};
+  for (let i = 2; i + 1 < rows.length; i += 4) {
+    const r1 = rows[i], r2 = rows[i+1];
+    if (!r1) continue;
+    const mid = String(r1[1]||'').trim();
+    if (!mid || !/^\d+$/.test(mid)) continue;
+    // 送信数: row1[6] "送信X"
+    const sm = String(r1[6]||'').match(/送信(\d+)/);
+    const sendCount = sm ? parseInt(sm[1]) : 0;
+    // ログイン: row2[12] M列 '-'またはnanなら未ログイン
+    const lv = String(r2 ? (r2[12]||'') : '').trim();
+    const hasLogin = lv !== '' && lv !== '-' && lv !== 'nan' && lv !== 'null' && lv !== 'undefined';
+    map[mid] = {sendCount, hasLogin};
+  }
+  return map;
+}
+
+// ===== 年齢計算 =====
+function calcAge(birthStr, refStr) {
+  if (!birthStr || birthStr === '秘密') return null;
+  const b = new Date(birthStr.replace(/\//g, '-'));
+  if (isNaN(b)) return null;
+  const r = refStr ? new Date(refStr) : new Date();
+  let age = r.getFullYear() - b.getFullYear();
+  if (r.getMonth() < b.getMonth() || (r.getMonth() === b.getMonth() && r.getDate() < b.getDate())) age--;
+  return age;
+}
+
+// ===== 集計 =====
+function aggregate() {
+  // CSVユーザーにExcelの送信数・ログインをマージ
+  let users = S.csvUsers.map(u => ({
+    ...u,
+    sendCount: (S.excelMap[u.masterID] || {}).sendCount || 0,
+    hasLogin:  (S.excelMap[u.masterID] || {}).hasLogin  || false,
+  }));
+
+  // 登録日フィルター
+  if (S.dateFrom) {
+    const f = new Date(S.dateFrom);
+    users = users.filter(u => u.regDate && new Date(u.regDate.replace(/\//g,'-')) >= f);
+  }
+  if (S.dateTo) {
+    const t = new Date(S.dateTo); t.setHours(23,59,59);
+    users = users.filter(u => u.regDate && new Date(u.regDate.replace(/\//g,'-')) <= t);
+  }
+
+  // 全広告コード（設定順 + データにあるが未設定のもの）
+  const known = S.settings.map(s => s.code);
+  const inData = [...new Set(users.map(u => u.adCode).filter(Boolean))];
+  const allCodes = [...known, ...inData.filter(c => !known.includes(c))];
+
+  const rows = allCodes.map(code => {
+    const cfg = S.settings.find(s => s.code === code) || {type:'manual',price:0,ageMin:0,gender:'all',status:'active'};
+    let gu = users.filter(u => u.adCode === code);
+
+    // AF: 年齢・性別フィルター適用
+    if (cfg.type === 'af') {
+      if (cfg.ageMin > 0) gu = gu.filter(u => { const a = calcAge(u.birthDate, u.regDate); return a !== null && a >= cfg.ageMin; });
+      if (cfg.gender !== 'all') gu = gu.filter(u => u.gender === cfg.gender);
+    }
+
+    const reg   = gu.length;
+    const login = gu.filter(u => u.hasLogin).length;
+    const sn = n => gu.filter(u => u.sendCount >= n).length;
+    const s1=sn(1),s2=sn(2),s3=sn(3),s4=sn(4),s5=sn(5),s6=sn(6),s7=sn(7);
+    const pay1  = gu.filter(u => u.payCount >= 1).length;
+    const pay2  = gu.filter(u => u.payCount >= 2).length;
+    const rev   = gu.reduce((a, u) => a + u.totalPurchase, 0);
+    const cost  = cfg.type === 'af' ? reg * cfg.price : (S.manualCosts[code] || 0);
+
+    const pct = (a, b) => b > 0 ? (a/b*100).toFixed(1)+'%' : '-';
+    const yen = n => n > 0 ? '¥'+n.toLocaleString() : '-';
+
+    return {
+      code, cfg, reg, login,
+      loginRate: pct(login, reg),
+      s1,s2,s3,s4,s5,s6,s7,
+      r01: pct(s1,reg), r12: pct(s2,s1), r23: pct(s3,s2),
+      r34: pct(s4,s3),  r45: pct(s5,s4), r56: pct(s6,s5), r67: pct(s7,s6),
+      pay1, pay2, payRate: pct(pay1, reg),
+      rev, revStr: yen(rev),
+      cost, costStr: cfg.type==='af' ? yen(cost) : null,
+      cpa:  cost > 0 && reg > 0 ? yen(Math.round(cost/reg)) : '-',
+      roas: cost > 0 && rev  > 0 ? (rev/cost*100).toFixed(1)+'%' : '-',
+    };
+  });
+
+  S.lastRows = rows;
+  return rows;
+}
+
+// ===== テーブル描画 =====
+function render() {
+  const el = document.getElementById('tbl');
+  if (!S.csvLoaded && !S.excelLoaded) return;
+
+  const rows = aggregate();
+  const visible = rows.filter(r => S.showStopped || r.cfg.status !== 'stopped');
+
+  if (!visible.length) {
+    el.innerHTML = '<div class="no-data"><div class="icon">🔍</div><p>データがありません</p></div>';
+    return;
+  }
+
+  let h = `<table><thead>
+    <tr class="grp">
+      <th class="th-check"></th><th class="th-code"></th>
+      <th colspan="3" style="border-left:2px solid var(--border)">登録・ログイン</th>
+      <th colspan="7" style="border-left:2px solid var(--border)">送信数（n回以上）</th>
+      <th colspan="7" style="border-left:2px solid var(--border)">移行率</th>
+      <th colspan="3" style="border-left:2px solid var(--border)">課金</th>
+      <th colspan="4" style="border-left:2px solid var(--border)">広告費・ROI</th>
+    </tr>
+    <tr>
+      <th class="th-check"></th>
+      <th class="th-code">広告コード</th>
+      <th class="grpsep">登録数</th><th>ログイン</th><th>ログイン率</th>
+      <th class="grpsep">送信1</th><th>送信2</th><th>送信3</th><th>送信4</th><th>送信5</th><th>送信6</th><th>送信7</th>
+      <th class="grpsep">初回率</th><th>1→2</th><th>2→3</th><th>3→4</th><th>4→5</th><th>5→6</th><th>6→7</th>
+      <th class="grpsep">課金1回+</th><th>課金2回+</th><th>課金率</th>
+      <th class="grpsep">売上</th><th>広告費</th><th>CPA</th><th>ROAS</th>
+    </tr></thead><tbody>`;
+
+  for (const r of visible) {
+    const stopped = r.cfg.status === 'stopped';
+    const tb = r.cfg.type === 'af'
+      ? `<span class="cbadge b-af">AF</span>`
+      : `<span class="cbadge b-manual">運用</span>`;
+    const sb = stopped ? `<span class="cbadge b-stopped">停止</span>` : '';
+    const costCell = r.cfg.type === 'manual'
+      ? `<input class="cinput" type="text" value="${S.manualCosts[r.code]||''}" placeholder="¥0" onchange="setCost('${r.code}',this.value)" onfocus="this.select()">`
+      : `<span class="cfixed">${r.costStr||'-'}</span>`;
+
+    h += `<tr class="${stopped?'stopped':''}">
+      <td class="td-check"><input type="checkbox" data-code="${r.code}" checked></td>
+      <td class="td-code">${r.code}${tb}${sb}</td>
+      <td class="grpsep num">${r.reg||'-'}</td>
+      <td>${r.login||'-'}</td>
+      <td>${r.loginRate}</td>
+      <td class="grpsep">${r.s1||'-'}</td><td>${r.s2||'-'}</td><td>${r.s3||'-'}</td>
+      <td>${r.s4||'-'}</td><td>${r.s5||'-'}</td><td>${r.s6||'-'}</td><td>${r.s7||'-'}</td>
+      <td class="grpsep">${r.r01}</td><td>${r.r12}</td><td>${r.r23}</td>
+      <td>${r.r34}</td><td>${r.r45}</td><td>${r.r56}</td><td>${r.r67}</td>
+      <td class="grpsep money">${r.pay1||'-'}</td>
+      <td class="money">${r.pay2||'-'}</td>
+      <td>${r.payRate}</td>
+      <td class="grpsep">${r.revStr}</td>
+      <td style="padding:4px 8px">${costCell}</td>
+      <td>${r.cpa}</td>
+      <td>${r.roas}</td>
+    </tr>`;
+  }
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+// ===== エクスポート =====
+function openExport() {
+  if (!S.lastRows.length) { alert('先にファイルを読み込んでください'); return; }
+  const vis = S.lastRows.filter(r => S.showStopped || r.cfg.status !== 'stopped');
+  document.getElementById('exp-list').innerHTML = vis.map(r =>
+    `<div class="chk-item">
+      <input type="checkbox" id="e-${r.code}" value="${r.code}" checked>
+      <label for="e-${r.code}">${r.code}</label>
+      <span style="font-size:11px;color:var(--text3)">${r.reg}件</span>
+    </div>`
+  ).join('');
+  document.getElementById('exp-modal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('exp-modal').style.display = 'none'; }
+function checkAll(v) { document.querySelectorAll('#exp-list input[type=checkbox]').forEach(e => e.checked = v); }
+function doExport() {
+  const sel = new Set([...document.querySelectorAll('#exp-list input:checked')].map(e => e.value));
+  const rows = S.lastRows.filter(r => sel.has(r.code));
+  if (!rows.length) { alert('コードを選択してください'); return; }
+  const H = ['広告コード','登録数','ログイン数','ログイン率',
+    '送信1以上','送信2以上','送信3以上','送信4以上','送信5以上','送信6以上','送信7以上',
+    '初回送信率','送信1→2','送信2→3','送信3→4','送信4→5','送信5→6','送信6→7',
+    '課金1回以上','課金2回以上','課金率','売上','広告費','CPA','ROAS'];
+  const lines = [H.join(',')];
+  for (const r of rows) {
+    const cost = r.cfg.type === 'af' ? r.cost : (S.manualCosts[r.code]||0);
+    lines.push([
+      r.code, r.reg, r.login, r.loginRate,
+      r.s1,r.s2,r.s3,r.s4,r.s5,r.s6,r.s7,
+      r.r01,r.r12,r.r23,r.r34,r.r45,r.r56,r.r67,
+      r.pay1,r.pay2,r.payRate,
+      r.rev, cost, r.cpa, r.roas
+    ].join(','));
+  }
+  const blob = new Blob(['\uFEFF'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `広告集計_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  closeModal();
+}
+
+// ===== 設定描画 =====
+function renderSettings() {
+  const el = document.getElementById('slist');
+  if (!S.settings.length) { el.innerHTML='<p style="color:var(--text3);padding:8px 0;font-size:12px">設定がありません</p>'; return; }
+  el.innerHTML = S.settings.map((s,i) => `
+    <div class="srow">
+      <span class="cname">${s.code}</span>
+      <span class="stag stag-${s.status==='active'?'on':'off'}">${s.status==='active'?'稼働中':'停止中'}</span>
+      <label>種別</label>
+      <select onchange="upd(${i},'type',this.value)">
+        <option value="manual" ${s.type==='manual'?'selected':''}>手動</option>
+        <option value="af" ${s.type==='af'?'selected':''}>AF</option>
+      </select>
+      ${s.type==='af'?`
+        <label>単価¥</label>
+        <input type="number" value="${s.price}" min="0" step="110" onchange="upd(${i},'price',+this.value)" style="width:78px">
+        <label>年齢下限</label>
+        <input type="number" value="${s.ageMin}" min="0" max="99" onchange="upd(${i},'ageMin',+this.value)" style="width:55px">
+        <label>性別</label>
+        <select onchange="upd(${i},'gender',this.value)">
+          <option value="all" ${s.gender==='all'?'selected':''}>制限なし</option>
+          <option value="f" ${s.gender==='f'?'selected':''}>女性</option>
+          <option value="m" ${s.gender==='m'?'selected':''}>男性</option>
+        </select>`:''}
+      <label>状態</label>
+      <select onchange="upd(${i},'status',this.value)">
+        <option value="active" ${s.status==='active'?'selected':''}>稼働中</option>
+        <option value="stopped" ${s.status==='stopped'?'selected':''}>停止中</option>
+      </select>
+      <button class="del-btn" onclick="del(${i})">削除</button>
+    </div>`).join('');
+}
+
+function upd(i, k, v) { S.settings[i][k]=v; saveSetting(); renderSettings(); if(S.csvLoaded||S.excelLoaded) render(); }
+function del(i) { if(!confirm('削除しますか？')) return; S.settings.splice(i,1); saveSetting(); renderSettings(); if(S.csvLoaded||S.excelLoaded) render(); }
+function addCodes() {
+  const raw = document.getElementById('new-codes').value;
+  const type = document.getElementById('new-type').value;
+  const price = parseInt(document.getElementById('new-price').value)||0;
+  const ageMin = parseInt(document.getElementById('new-age').value)||0;
+  const gender = document.getElementById('new-gender').value;
+  const status = document.getElementById('new-status').value;
+  const codes = raw.split(/[\n,\s]+/).map(c=>c.trim()).filter(Boolean);
+  if (!codes.length) { alert('コードを入力してください'); return; }
+  let added = 0;
+  codes.forEach(code => { if(!S.settings.find(s=>s.code===code)) { S.settings.push({code,type,price,ageMin,gender,status}); added++; } });
+  saveSetting(); renderSettings();
+  if(S.csvLoaded||S.excelLoaded) render();
+  document.getElementById('new-codes').value = '';
+  alert(added > 0 ? `${added}件追加しました` : 'すでに登録済みです');
+}
+
+// ===== ファイル読み込み =====
+function dzOver(e,t) { e.preventDefault(); document.getElementById(`dz-${t}`).classList.add('drag-over'); }
+function dzOut(t)    { document.getElementById(`dz-${t}`).classList.remove('drag-over'); }
+function dzDrop(e,t) { e.preventDefault(); dzOut(t); const f=e.dataTransfer.files[0]; if(f) loadFile(f,t); }
+function onFile(e,t) { const f=e.target.files[0]; if(f) loadFile(f,t); }
+
+async function loadFile(file, type) {
+  const dz  = document.getElementById(`dz-${type}`);
+  const lbl = document.getElementById(`lbl-${type}`);
+  try {
+    if (type === 'csv') {
+      S.csvUsers  = await parseCSV(file);
+      S.csvLoaded = true;
+      lbl.textContent = `✓ ${file.name.substring(0,22)}`;
+    } else {
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, {type:'array', cellDates:true});
+      S.excelMap   = parseExcel(wb);
+      S.excelLoaded = true;
+      lbl.textContent = `✓ ${file.name.substring(0,22)}`;
+    }
+    dz.classList.remove('drag-over');
+    dz.classList.add('loaded');
+    render();
+  } catch(e) {
+    alert(`読み込みエラー: ${e.message}`);
+    console.error(e);
+  }
+}
+
+function setCost(code, val) {
+  S.manualCosts[code] = parseInt(val.replace(/[^0-9]/g,''))||0;
+  render();
+}
+
+// ===== UI =====
+function switchTab(tab) {
+  document.getElementById('tab-aggregate').style.display = tab==='aggregate' ? 'flex' : 'none';
+  document.getElementById('tab-settings').style.display  = tab==='settings'  ? 'block': 'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i) =>
+    b.classList.toggle('active', (i===0&&tab==='aggregate')||(i===1&&tab==='settings'))
+  );
+  if (tab === 'settings') renderSettings();
+}
+function toggleStopped() {
+  S.showStopped = !S.showStopped;
+  document.getElementById('tog-stopped').classList.toggle('on', S.showStopped);
+  render();
+}
+function clearDates() {
+  S.dateFrom=''; S.dateTo='';
+  document.getElementById('d-from').value='';
+  document.getElementById('d-to').value='';
+  render();
+}
+
+// ===== 起動 =====
+(async () => { await loadSettings(); })();
+</script>
+</body>
+</html>

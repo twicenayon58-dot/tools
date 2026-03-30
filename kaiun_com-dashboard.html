@@ -1,0 +1,2458 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>開運 分析ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{
+  --bg:#0c0e17;--s1:#161926;--s2:#1e2233;--s3:#252b40;--bd:#2a3050;--tx:#dde1f0;--dm:#6b7194;
+  --ac:#5b7fff;--gn:#2dd4a0;--rd:#f06878;--og:#f0aa40;--pp:#9f7fff;--cy:#22cce0;
+  --gn-bg:rgba(45,212,160,.1);--rd-bg:rgba(240,104,120,.1);--og-bg:rgba(240,170,64,.1);--pp-bg:rgba(159,127,255,.1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+
+/* DROP */
+/* 開運ドットコム - ランディングページ */
+#drop-zone{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:40px;position:relative;overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 35%, rgba(240,170,64,.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(240,104,120,.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 20% 70%, rgba(45,212,160,.04) 0%, transparent 45%),
+    var(--bg);
+}
+#drop-zone.hidden{display:none}
+/* 六芒星的な装飾リング */
+#drop-zone::before{
+  content:'';position:absolute;width:560px;height:560px;border-radius:50%;
+  border:1px solid rgba(240,170,64,.08);top:50%;left:50%;transform:translate(-50%,-52%);
+  pointer-events:none;
+}
+#drop-zone::after{
+  content:'';position:absolute;width:360px;height:360px;border-radius:50%;
+  border:1px solid rgba(240,170,64,.14);top:50%;left:50%;transform:translate(-50%,-52%);
+  pointer-events:none;
+}
+.dz-logo{font-size:42px;margin-bottom:6px;filter:drop-shadow(0 0 16px rgba(240,170,64,.55));}
+.dz-sitename{
+  font-size:26px;font-weight:800;letter-spacing:4px;
+  background:linear-gradient(135deg,#f0aa40 0%,#f06878 50%,#f0aa40 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-shadow:none;margin-bottom:4px;
+}
+.dz-subtitle{font-size:11px;color:var(--dm);letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;opacity:.7}
+#drop-zone h1{display:none}
+#drop-zone>p{display:none}
+.drop-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;position:relative;z-index:1}
+.drop-box{
+  width:240px;
+  border:1px solid rgba(240,170,64,.25);
+  border-radius:14px;padding:32px 24px;text-align:center;cursor:pointer;
+  background:rgba(240,170,64,.03);
+  transition:all .25s;
+  box-shadow:0 0 30px rgba(240,170,64,.04);
+}
+.drop-box:hover,.drop-box.dragover{
+  border-color:rgba(240,170,64,.6);
+  background:rgba(240,170,64,.07);
+  box-shadow:0 0 50px rgba(240,170,64,.12);
+}
+.drop-box.loaded{border-color:rgba(240,170,64,.7);background:rgba(240,170,64,.06)}
+.drop-box .icon{font-size:32px;margin-bottom:10px}
+.drop-box .label{font-size:14px;font-weight:700;margin-bottom:4px}
+.drop-box .sub{font-size:11px;color:var(--dm)}
+.drop-box .status{font-size:12px;color:var(--gn);margin-top:8px;font-weight:600;min-height:18px}
+.drop-box input{display:none}
+#start-btn{background:linear-gradient(135deg,#f0aa40,#f06878);border:none;color:#fff;padding:12px 40px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:none;box-shadow:0 4px 20px rgba(240,170,64,.3)}
+#start-btn.show{display:block}#start-btn:hover{opacity:.85}
+
+/* DASHBOARD */
+#dashboard{display:none;padding:20px;max-width:1500px;margin:0 auto}
+#dashboard.active{display:block}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.header h1{font-size:18px;font-weight:800}
+.header-meta{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--dm)}
+.mono{font-family:'JetBrains Mono',monospace;color:var(--ac);font-size:12px}
+.btn{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:var(--ac)}
+
+/* SUMMARY */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;margin-bottom:20px}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:13px 15px}
+.sc.alert{border-color:rgba(240,104,120,.35);background:rgba(240,104,120,.04)}
+.sc.highlight{border-color:rgba(240,170,64,.35);background:rgba(240,170,64,.03)}
+.sc .l{font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sc .v{font-size:21px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.sc .sb{font-size:11px;color:var(--dm);margin-top:2px}
+
+/* PHASE CARDS */
+.phase-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.phase-card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.phase-card.step-phase{border-color:rgba(45,212,160,.3)}
+.phase-card.post-phase{border-color:rgba(240,170,64,.3)}
+.phase-title{font-size:12px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.phase-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pm{text-align:center}
+.pm .pv{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.pm .pl{font-size:10px;color:var(--dm);margin-top:2px}
+
+/* TABS */
+.tabs{display:flex;margin-bottom:16px;border-bottom:1px solid var(--bd);overflow-x:auto}
+.tab{padding:9px 14px;font-size:12px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--tx)}.tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tc{display:none}.tc.active{display:block}
+
+/* TABLE */
+.tw{overflow-x:auto;border-radius:10px;border:1px solid var(--bd);background:var(--s1)}
+table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+th{background:var(--s2);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--dm);padding:9px 10px;text-align:right;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:1}
+th:first-child,td:first-child{text-align:left;padding-left:14px}
+td{padding:7px 10px;border-bottom:1px solid rgba(42,48,80,.5);text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(91,127,255,.03)}
+.rh{color:var(--gn)}.rm{color:var(--og)}.rl{color:var(--rd)}
+.tot-row td{background:var(--s2);font-weight:700;border-top:2px solid var(--bd)}
+
+/* ROW ZONE COLORS */
+.row-free td:first-child{border-left:3px solid var(--gn)}
+.row-border td:first-child{border-left:3px solid var(--og)}
+.row-paid td:first-child{border-left:3px solid var(--ac)}
+.row-post td:first-child{border-left:3px solid var(--pp)}
+.row-other td:first-child{border-left:3px solid var(--dm)}
+
+/* 7通バッジ */
+.hot-badge{display:inline-block;background:var(--og-bg);color:var(--og);border:1px solid rgba(240,170,64,.25);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:5px}
+.bot-badge{display:inline-block;background:var(--rd-bg);color:var(--rd);border:1px solid rgba(240,104,120,.2);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;margin-left:4px}
+
+/* CLICKABLE */
+td.has-ids{cursor:pointer}
+td.has-ids:hover{background:rgba(91,127,255,.12)!important;color:var(--ac)}
+td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
+
+/* MODAL */
+#id-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+#id-modal-overlay.show{display:flex}
+#id-modal{background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:500px;max-width:95vw;max-height:82vh;display:flex;flex-direction:column;overflow:hidden}
+#id-modal-header{padding:16px 18px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:flex-start}
+#id-modal-label{font-size:13px;font-weight:700}
+#id-modal-count{font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ac);display:block;margin-top:2px}
+#id-modal-close{background:none;border:none;color:var(--dm);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:4px}
+#id-modal-close:hover{color:var(--tx);background:var(--s3)}
+#id-modal-body{flex:1;overflow-y:auto;padding:14px 18px}
+#id-modal-list{display:flex;flex-wrap:wrap;gap:6px}
+.id-chip{background:var(--s3);border:1px solid var(--bd);border-radius:5px;padding:4px 9px;font-family:'JetBrains Mono',monospace;font-size:12px}
+#id-modal-footer{padding:12px 18px;border-top:1px solid var(--bd);display:flex;gap:8px;align-items:center}
+#id-copy-btn{flex:1;background:var(--ac);border:none;color:#fff;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit}
+#id-copy-btn.copied{background:var(--gn)}
+#id-sep-select{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:12px}
+
+/* SORTABLE */
+.sortable{cursor:pointer;user-select:none}.sortable:hover{color:var(--ac)}
+.sortable.asc::after{content:'▲';display:inline-block;margin-left:3px;font-size:9px}
+.sortable.desc::after{content:'▼';display:inline-block;margin-left:3px;font-size:9px}
+
+/* HOURLY */
+.h-chart{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.h-header{display:grid;grid-template-columns:46px 1fr;background:var(--s2);border-bottom:1px solid var(--bd);padding:7px 14px;font-size:10px;font-weight:600;color:var(--dm);text-transform:uppercase}
+.h-row{display:grid;grid-template-columns:46px 1fr;padding:3px 14px;border-bottom:1px solid rgba(42,48,80,.4);align-items:center}
+.h-row:last-child{border-bottom:none}
+.h-lbl{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dm)}
+.h-cell{display:flex;align-items:center;gap:6px}
+.h-track{flex:1;height:10px;background:var(--s3);border-radius:2px;overflow:hidden}
+.h-fill{height:100%;border-radius:2px;background:var(--ac)}
+.h-num{font-family:'JetBrains Mono',monospace;font-size:11px;width:28px;text-align:right;color:var(--dm)}
+.h-num.has{color:var(--tx);cursor:pointer}.h-num.has:hover{color:var(--ac)}
+
+/* CARRIER */
+.carrier-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.c-sb{background:rgba(240,104,120,.12);color:#f06878}.c-dc{background:rgba(251,146,60,.12);color:#fb923c}
+.c-au{background:rgba(240,170,64,.12);color:#f0aa40}.c-ic{background:rgba(91,127,255,.12);color:#5b7fff}
+.c-gm{background:rgba(45,212,160,.12);color:#2dd4a0}.c-ym{background:rgba(159,127,255,.12);color:#9f7fff}
+.c-ot{background:rgba(107,113,148,.12);color:#6b7194}
+.c-ht{background:rgba(34,204,224,.12);color:#22cce0}
+
+/* LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.section{margin-bottom:20px}
+.stitle{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.note{font-size:11px;color:var(--dm);margin-top:8px;padding:9px 12px;background:var(--s2);border-radius:8px;border-left:3px solid var(--ac)}
+.debug-box{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--dm)}
+.act-drop{border:2px dashed var(--bd);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--s1)}
+.act-drop:hover,.act-drop.dragover,.act-drop.loaded{border-color:var(--gn);background:var(--gn-bg)}
+.act-drop.loaded{cursor:default}
+.act-metric{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px;text-align:center;transition:all .15s}
+.act-metric.clickable{cursor:pointer}
+.act-metric.clickable:hover{border-color:var(--ac);background:rgba(91,127,255,.08)}
+.act-metric.clickable:hover .av{color:var(--ac)!important}
+.act-metric.clickable::after{content:"クリックでID";display:block;font-size:9px;color:var(--dm);margin-top:3px;opacity:0;transition:opacity .15s}
+.act-metric.clickable:hover::after{opacity:1}
+.act-metric .av{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.act-metric .al{font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.act-metric .as{font-size:11px;color:var(--dm);margin-top:3px}
+.act-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px}
+.pt-input{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:6px 10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px;width:90px;text-align:right}
+.pt-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.pt-row label{font-size:12px;color:var(--dm);min-width:120px}
+.warn-box{background:var(--rd-bg);border:1px solid rgba(240,104,120,.3);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--rd)}
+.debug-box strong{color:var(--tx)}
+@media(max-width:900px){.two-col,.phase-row{grid-template-columns:1fr}}
+@media(max-width:768px){#dashboard{padding:12px}.summary-row{grid-template-columns:repeat(2,1fr)}.phase-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- DROP ZONE -->
+<div id="drop-zone">
+  <div class="dz-logo">☽</div>
+  <div class="dz-sitename">開運ドットコム</div>
+  <div class="dz-subtitle">Member Analytics Dashboard</div>
+  <h1>📊 開運 分析ダッシュボード</h1>
+  <p>毎日21時のCSV（全会員）とExcelの2ファイルを読み込む</p>
+  <div class="drop-row">
+    <div class="drop-box" id="box-csv" onclick="document.getElementById('input-csv').click()">
+      <div class="icon">📄</div>
+      <div class="label">export.csv</div>
+      <div class="sub">購入金額・入金回数・登録日時等</div>
+      <div class="status" id="csv-status"></div>
+      <input type="file" id="input-csv" accept=".csv">
+    </div>
+    <div class="drop-box" id="box-xlsx" onclick="document.getElementById('input-xlsx').click()">
+      <div class="icon">📊</div>
+      <div class="label">Excel (.xlsx)</div>
+      <div class="sub">送信数・ログイン・ステータス・IP</div>
+      <div class="status" id="xlsx-status"></div>
+      <input type="file" id="input-xlsx" accept=".xlsx,.xls">
+    </div>
+  </div>
+  <button id="start-btn" onclick="startAnalysis()">▶ 分析開始</button>
+  <div style="margin-top:20px;font-size:11px;color:var(--dm);opacity:.4;letter-spacing:1px;position:relative;z-index:1">
+    データはブラウザ内のみで処理されます
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="id-modal-overlay">
+  <div id="id-modal">
+    <div id="id-modal-header">
+      <div><div id="id-modal-label">会員ID一覧</div><span id="id-modal-count">0件</span></div>
+      <button id="id-modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="id-modal-body">
+      <textarea id="id-modal-list" readonly style="width:100%;height:300px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);resize:vertical;line-height:1.8;outline:none"></textarea>
+    </div>
+    <div id="id-modal-footer">
+      <button id="id-copy-btn" onclick="copyIds()">📋 全IDをコピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+
+<!-- 純広告コード設定モーダル -->
+<div id="adcode-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(3px)">
+  <div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:480px;max-width:95vw;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:15px;font-weight:700">🏷 純広告コード設定</div>
+        <div style="font-size:11px;color:var(--dm);margin-top:3px">今月の純広告コードを1行1つで入力。これ以外は全てCSV系として集計されます。</div>
+      </div>
+      <button onclick="closeAdCodeModal()" style="background:none;border:none;color:var(--dm);font-size:18px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+    <textarea id="adcode-input" placeholder="例：&#10;ad_20260301_lp1&#10;ad_20260315_fb&#10;&#10;（月0〜5本程度）" style="width:100%;height:180px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px;resize:vertical;outline:none;line-height:1.8"></textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+      <button onclick="saveAdCodes()" style="background:var(--ac);border:none;color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;flex:1">保存</button>
+      <button onclick="closeAdCodeModal()" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit">キャンセル</button>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--dm)">※ ブラウザに保存されます。翌月は上書き入力するだけでOK。</div>
+  </div>
+</div>
+<div id="dashboard">
+  <div class="header">
+    <h1>☽ 開運ドットコム</h1>
+    <div class="header-meta">
+      <span>読込: <span class="mono" id="load-time">-</span></span>
+      <button class="btn" id="btn-save-noon" onclick="saveDailyLog('noon')" disabled
+        style="background:rgba(34,204,224,.1);border-color:var(--cy);color:var(--cy);font-weight:700">
+        📸 昼の記録（12時）
+      </button>
+      <button class="btn" id="btn-save-night" onclick="saveDailyLog('night')" disabled
+        style="background:var(--gn-bg);border-color:var(--gn);color:var(--gn);font-weight:700">
+        💾 夜の記録（21時）
+      </button>
+      <button class="btn" onclick="openAdCodeModal()" title="今月の純広告コードを設定">
+        🏷 純広告コード設定
+      </button>
+      <button class="btn" onclick="location.reload()">← やり直す</button>
+    </div>
+  </div>
+  <!-- データ表示切り替えトグル -->
+  <div id="seg-toggle-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--dm);font-weight:600">表示対象：</span>
+    <button class="seg-toggle-btn active" data-seg="all" onclick="setSegFilter('all',this)"
+      style="padding:6px 18px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--ac);color:#fff;transition:all .15s">
+      全体
+    </button>
+    <button class="seg-toggle-btn" data-seg="csv" onclick="setSegFilter('csv',this)"
+      style="padding:6px 18px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--s2);color:var(--dm);transition:all .15s">
+      CSV系
+    </button>
+    <button class="seg-toggle-btn" data-seg="ad" onclick="setSegFilter('ad',this)"
+      style="padding:6px 18px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--s2);color:var(--dm);transition:all .15s">
+      純広告
+    </button>
+    <span id="seg-filter-label" style="font-size:11px;color:var(--dm);margin-left:4px"></span>
+    <span style="font-size:11px;color:var(--dm);margin-left:auto">純広告コード未設定の場合は全員CSV系として扱います</span>
+  </div>
+  <div class="date-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <label style="font-size:12px;color:var(--dm)">対象日:</label>
+    <input type="date" id="target-date" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:5px 10px;border-radius:6px;font-size:13px;font-family:inherit">
+    <button class="btn" onclick="reAnalyze()" style="font-size:12px">再分析</button>
+    <button class="btn" onclick="setToday()" style="font-size:12px">今日</button>
+  </div>
+  <div id="debug-info" class="debug-box"></div>
+  <!-- フィルター状態バナー -->
+  <div id="filter-banner" style="display:none;padding:8px 14px;border-radius:8px;margin-bottom:10px;font-size:12px;font-weight:700;text-align:center"></div>
+
+  <!-- フェーズ別サマリーカード -->
+  <div class="phase-row">
+    <div class="phase-card step-phase">
+      <div class="phase-title"><span style="color:var(--gn)">▌</span>ステップ期間（0〜18日目）<span style="font-size:10px;color:var(--dm);font-weight:400">育成・初課金フェーズ</span></div>
+      <div class="phase-grid" id="phase-step"></div>
+    </div>
+    <div class="phase-card post-phase">
+      <div class="phase-title"><span style="color:var(--og)">▌</span>ステップ終了後（新キャラ等）<span style="font-size:10px;color:var(--dm);font-weight:400">売上最大化フェーズ</span></div>
+      <div class="phase-grid" id="phase-post"></div>
+    </div>
+  </div>
+  <div class="summary-row" id="summary-cards"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="today">🔴 今日の状況</button>
+    <button class="tab" data-tab="step">① ステップ別（0〜18日目）</button>
+    <button class="tab" data-tab="post">② ステップ後（新キャラ等）</button>
+    <button class="tab" data-tab="purchase">③ 課金者分析</button>
+    <button class="tab" data-tab="adcode">④ 広告コード別</button>
+    <button class="tab" data-tab="carrier">⑤ キャリア別</button>
+    <button class="tab" data-tab="bot">⚠️ ボット疑い</button>
+    <button class="tab" data-tab="activity">⑥ 活動量分析</button>
+    <button class="tab" data-tab="delivery">⑦ 配信管理</button>
+  </div>
+
+  <!-- 今日の状況 -->
+  <div class="tc active" id="tab-today">
+    <div class="two-col" style="margin-bottom:16px">
+      <div>
+        <div class="section">
+          <div class="stitle">🔥 7通以上返信・未課金
+            <span class="hot-badge">課金候補</span>
+            <span style="font-size:11px;color:var(--dm);font-weight:400">今すぐアプローチすべき対象</span>
+          </div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>ステータス</th><th>人数</th><th>今日ログイン</th><th>率</th><th>平均送信数</th>
+              </tr></thead>
+              <tbody id="tb-hot"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 7通以上返信かつ未課金 = 最も課金転換しやすい層。数字クリックでID抽出。</div>
+        </div>
+        <div class="section">
+          <div class="stitle">今日のログイン→送信転換（ステップ期間のみ）</div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>ステータス</th><th>在籍</th><th>今日ログイン</th><th>率</th><th>うち送信あり</th><th>転換率</th><th>送信0（要注目）</th>
+              </tr></thead>
+              <tbody id="tb-today-step"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 ログイン率↑・転換率↓ = コンテンツ問題。ログイン率↓ = 配信問題。</div>
+        </div>
+      </div>
+      <div>
+        <div class="section">
+          <div class="stitle">時間帯別ログイン（今日・全体）</div>
+          <div class="h-chart">
+            <div class="h-header"><span>時</span><span style="color:var(--ac)">■ ログイン数</span></div>
+            <div id="hourly-rows"></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="stitle">課金者の今日のログイン状況</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>経過日数</th><th>課金者数</th><th>率</th></tr></thead>
+              <tbody id="tb-pur-login-today"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 課金者はボット可能性が低く最終ログインは信頼できる指標。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ステップ別 -->
+  <div class="tc" id="tab-step">
+    <div class="section">
+      <div class="note" style="margin-bottom:12px">
+        💡 登録0〜18日目のステップ期間。<span style="color:var(--gn)">■無料</span> <span style="color:var(--og)">■境界（2.5日目）</span> <span style="color:var(--ac)">■有料</span>。数字クリックでID抽出。
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>ステータス（日目）</th><th>在籍</th>
+            <th>今日ログイン</th><th>率</th>
+            <th>送信0件</th><th style="color:var(--cy)">送信合計</th><th>送信1</th><th>送信2</th><th>送信3</th><th>送信4</th><th>送信5</th><th>送信6</th><th>送信7以上</th>
+            <th>7通以上<br>未課金</th>
+            <th>課金者</th><th>課金率</th><th>売上</th>
+          </tr></thead>
+          <tbody id="tb-step"></tbody>
+        </table>
+      </div>
+      <div class="note">※ 送信数＝ユーザーからの累計返信数。7通以上返信で課金率が大きく変わるポイント。</div>
+    </div>
+  </div>
+
+  <!-- ステップ後 -->
+  <div class="tc" id="tab-post">
+    <div class="two-col">
+      <div>
+        <div class="section">
+          <div class="stitle">ステップ後ラベル別サマリー</div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>ラベル</th><th>在籍</th><th>今日ログイン</th><th>率</th>
+                <th>課金者</th><th>率</th><th>売上</th>
+              </tr></thead>
+              <tbody id="tb-post-labels"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section">
+          <div class="stitle">ステップ後 送信数分布</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>送信数</th><th>人数</th><th>うち課金者</th><th>課金率</th></tr></thead>
+              <tbody id="tb-post-send"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 ステップ後の送信数は他キャラ分も含むため参考指標として使用。</div>
+        </div>
+      </div>
+      <div>
+        <div class="section">
+          <div class="stitle">課金者のログイン継続（ステップ後のみ）</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>最終ログイン経過</th><th>課金者数</th><th>率</th></tr></thead>
+              <tbody id="tb-post-pur-ret"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 「7日超」が多い = 課金後に離脱。再エンゲージ施策の対象。</div>
+        </div>
+        <div class="section">
+          <div class="stitle">広告コード別（ステップ後）</div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>広告コード</th><th>在籍</th><th>ログイン</th><th>率</th><th>課金者</th><th>率</th><th>売上</th>
+              </tr></thead>
+              <tbody id="tb-post-adcode"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 課金者分析 -->
+  <div class="tc" id="tab-purchase">
+    <div class="two-col">
+      <div>
+        <div class="section">
+          <div class="stitle">初課金発生ステータス（登録何日目で初課金したか）</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>ステータス</th><th>人数</th><th>構成比</th></tr></thead>
+              <tbody id="tb-first-buy-status"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 初課金が集中するステータスの直前が離脱改善ポイント。</div>
+        </div>
+        <div class="section">
+          <div class="stitle">登録→初回課金までの日数</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>期間</th><th>人数</th><th>構成比</th><th>累計</th></tr></thead>
+              <tbody id="tb-days-to-buy"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="section">
+          <div class="stitle">入金回数分布</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>回数</th><th>人数</th><th>構成比</th></tr></thead>
+              <tbody id="tb-buycount"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section">
+          <div class="stitle">課金者の最終ログイン経過日数（全体）</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>経過</th><th>人数</th><th>率</th></tr></thead>
+              <tbody id="tb-pur-ret-all"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 広告コード別 -->
+  <div class="tc" id="tab-adcode">
+    <div class="section">
+      <div class="stitle">広告コード別 集計（全体）
+        <span style="font-size:11px;color:var(--dm);font-weight:400">ヘッダークリックで並替</span>
+      </div>
+      <div id="adcode-legend" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:11px">
+        <span style="padding:3px 10px;border-radius:5px;background:rgba(240,170,64,.12);color:var(--og);border:1px solid rgba(240,170,64,.3)">🟠 純広告コード</span>
+        <span style="padding:3px 10px;border-radius:5px;background:rgba(34,204,224,.1);color:var(--cy);border:1px solid rgba(34,204,224,.25)">🔵 CSV系コード</span>
+        <span id="adcode-pure-count" style="color:var(--dm)"></span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th class="sortable" data-sort="name">広告コード</th>
+            <th class="sortable" data-sort="t">在籍</th>
+            <th class="sortable" data-sort="lo">ログイン</th><th class="sortable" data-sort="lo_r">率</th>
+            <th class="sortable" data-sort="s7p">7通以上<br>返信</th><th class="sortable" data-sort="s7p_r">率</th>
+            <th class="sortable" data-sort="pu">課金者</th><th class="sortable" data-sort="pu_r">率</th>
+            <th class="sortable" data-sort="rev">売上</th>
+            <th class="sortable" data-sort="arpu">ARPU</th>
+          </tr></thead>
+          <tbody id="tb-adcode"></tbody>
+        </table>
+      </div>
+      <div class="note">💡 「7通以上返信率」が高い広告コード = 質の高い媒体。課金率と合わせて判断。</div>
+    </div>
+  </div>
+
+  <!-- キャリア別 -->
+  <div class="tc" id="tab-carrier">
+    <div class="section">
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>キャリア</th><th>在籍</th><th>構成比</th>
+            <th>今日</th><th>率</th>
+            <th>1日</th><th>率</th>
+            <th>2〜3日</th><th>率</th>
+            <th>4〜7日</th><th>率</th>
+            <th>7日超</th><th>率</th>
+            <th style="border-left:2px solid var(--rd);color:var(--rd)">ボット疑い<br><span style="font-size:9px;font-weight:400">最終ログインがクラウド/海外IP</span></th><th style="color:var(--rd)">率</th>
+          </tr></thead>
+          <tbody id="tb-carrier"></tbody>
+        </table>
+      </div>
+      <div class="note">💡 特定キャリアの「今日」率が急落 → 配信ブロック・迷惑メール判定の可能性。</div>
+    </div>
+
+    <!-- 配信ドメイン一覧 -->
+    <div class="section">
+      <div class="stitle">📋 配信ドメイン一覧
+        <span style="font-size:11px;color:var(--dm);font-weight:400">クリックでコピー。配信システムのドメイン指定に使用。</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--og);margin-bottom:8px">Yahoo系</div>
+          <div id="domain-yahoo" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:var(--tx)"></div>
+          <button class="btn" style="margin-top:8px;width:100%;font-size:11px" onclick="copyDomains('yahoo')">📋 Yahooドメインをコピー</button>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--cy);margin-bottom:8px">Hotmail / Outlook系</div>
+          <div id="domain-hotmail" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:var(--tx)"></div>
+          <button class="btn" style="margin-top:8px;width:100%;font-size:11px" onclick="copyDomains('hotmail')">📋 Hotmailドメインをコピー</button>
+        </div>
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:8px">その他PCドメイン</div>
+          <div id="domain-other" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2;color:var(--tx)"></div>
+          <button class="btn" style="margin-top:8px;width:100%;font-size:11px" onclick="copyDomains('other')">📋 その他ドメインをコピー</button>
+        </div>
+      </div>
+      <div class="note" style="margin-top:10px">💡 CSVに実際に入っているドメインのみ表示。在籍数0件のドメインは除外。</div>
+    </div>
+  </div>
+
+  <!-- 活動量分析 -->
+  <div class="tc" id="tab-activity">
+    <!-- スナップショット -->
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px">
+        <div class="stitle">📸 スナップショット保存</div>
+        <div style="font-size:11px;color:var(--dm);margin-bottom:8px">現在のCSVをJSON保存。次回読み込みで差分を計算します。</div>
+        <button class="btn" id="btn-save-snapshot" onclick="saveSnapshot()" style="background:var(--gn-bg);border-color:var(--gn);color:var(--gn);font-weight:700" disabled>
+          💾 スナップショット保存（日時入りJSON）
+        </button>
+      </div>
+      <div style="flex:1;min-width:240px">
+        <div class="stitle">📂 前回スナップショット読み込み</div>
+        <div id="act-drop" class="act-drop" onclick="document.getElementById('input-snapshot').click()">
+          <div style="font-size:12px;font-weight:600;color:var(--dm)" id="act-drop-label">前回保存したJSONをドロップ or クリック</div>
+        </div>
+        <input type="file" id="input-snapshot" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <!-- 設定 -->
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div class="stitle" style="margin-bottom:10px">⚙️ 設定</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <div class="pt-row" style="margin:0">
+          <label>1通あたり消費pt</label>
+          <input type="number" class="pt-input" id="pt-per-msg" value="150" min="1">
+          <span style="font-size:12px;color:var(--dm)">pt／通</span>
+        </div>
+        <div class="pt-row" style="margin:0">
+          <label>キャンペーン対象ポイント上限</label>
+          <input type="number" class="pt-input" id="pt-thresh-hi" value="1000" min="0">
+          <span style="font-size:12px;color:var(--dm)">pt以下</span>
+        </div>
+        <button class="btn btn-p" onclick="refreshActivity()">適用</button>
+      </div>
+    </div>
+
+    <!-- フィルターバー -->
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--tx)">🔍 絞り込みフィルター
+        <span style="font-size:10px;color:var(--dm);font-weight:400;margin-left:8px">組み合わせ自由・ボタンを押すと即反映</span>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">課金状態</span>
+          <div class="btn-toggle" id="filter-purchase">
+            <button class="active" data-val="all">全員</button>
+            <button data-val="paid">課金者のみ</button>
+            <button data-val="unpaid">未課金のみ</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">最終ログイン</span>
+          <div class="btn-toggle" id="filter-login">
+            <button class="active" data-val="all">全員（30日）</button>
+            <button data-val="7">7日以内</button>
+            <button data-val="3">3日以内</button>
+            <button data-val="0">当日のみ</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">返信状態</span>
+          <div class="btn-toggle" id="filter-reply">
+            <button class="active" data-val="all">全員</button>
+            <button data-val="yes">返信あり</button>
+            <button data-val="no">返信なし</button>
+          </div>
+        </div>
+      </div>
+      <!-- フィルター結果サマリー -->
+      <div id="filter-summary" style="margin-top:10px;font-size:12px;color:var(--ac);font-family:'JetBrains Mono',monospace"></div>
+    </div>
+
+    <!-- ポイント状況 -->
+    <div class="section">
+      <div class="stitle">💰 現在ポイント状況（キャンペーン対象抽出）</div>
+      <div class="act-grid" id="act-pt-cards"></div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--og)">🎯 キャンペーン対象（ポイント枯渇）</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th colspan="4">ポイント帯</th><th style="color:var(--pp)">課金者</th><th style="color:var(--cy)">未課金者</th><th style="color:var(--og)">合計</th><th>平均pt</th></tr></thead>
+              <tbody id="tb-pt-campaign"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 数字クリックでID抽出→コピー。そのままキャンペーン配信リストに。</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--dm)">全ポイント帯分布</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>ポイント帯</th><th>人数</th><th>構成比</th><th style="color:var(--pp)">課金者</th><th style="color:var(--cy)">未課金者</th></tr></thead>
+              <tbody id="tb-pt-dist"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 差分分析 -->
+    <div id="act-diff-section" style="display:none">
+      <div class="section">
+        <div class="stitle">📊 活動量（差分）分析
+          <span id="act-period-label" style="font-size:11px;color:var(--dm);font-weight:400"></span>
+        </div>
+        <div id="act-warn" style="display:none;margin-bottom:12px"></div>
+        <div class="act-grid" id="act-diff-cards"></div>
+        <div class="two-col">
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--gn)">✅ 活動あり（ポイント消費）</div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>消費ポイント帯</th><th>人数</th><th>推定返信数</th></tr></thead>
+                <tbody id="tb-diff-active"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--rd)">❌ 活動なし（消費0）</div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>ステータス</th><th>人数</th><th>今日ログイン</th></tr></thead>
+                <tbody id="tb-diff-inactive"></tbody>
+              </table>
+            </div>
+            <div class="note">💡 ログインしてるのに消費0 = コンテンツが刺さっていない可能性。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="act-no-snapshot" style="padding:24px;text-align:center;color:var(--dm);font-size:12px">
+      📂 前回スナップショット（JSON）を読み込むと活動量差分が表示されます
+    </div>
+
+  </div>
+
+  <!-- 活動量分析 -->
+  <div class="tc" id="tab-activity">
+    <!-- スナップショット -->
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px">
+        <div class="stitle">📸 スナップショット保存</div>
+        <div style="font-size:11px;color:var(--dm);margin-bottom:8px">現在のCSVをJSON保存。次回読み込みで差分を計算します。</div>
+        <button class="btn" id="btn-save-snapshot" onclick="saveSnapshot()" style="background:var(--gn-bg);border-color:var(--gn);color:var(--gn);font-weight:700" disabled>
+          💾 スナップショット保存（日時入りJSON）
+        </button>
+      </div>
+      <div style="flex:1;min-width:240px">
+        <div class="stitle">📂 前回スナップショット読み込み</div>
+        <div id="act-drop" class="act-drop" onclick="document.getElementById('input-snapshot').click()">
+          <div style="font-size:12px;font-weight:600;color:var(--dm)" id="act-drop-label">前回保存したJSONをドロップ or クリック</div>
+        </div>
+        <input type="file" id="input-snapshot" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <!-- 設定 -->
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div class="stitle" style="margin-bottom:10px">⚙️ 設定</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <div class="pt-row" style="margin:0">
+          <label>1通あたり消費pt</label>
+          <input type="number" class="pt-input" id="pt-per-msg" value="150" min="1">
+          <span style="font-size:12px;color:var(--dm)">pt／通</span>
+        </div>
+        <div class="pt-row" style="margin:0">
+          <label>キャンペーン対象ポイント上限</label>
+          <input type="number" class="pt-input" id="pt-thresh-hi" value="1000" min="0">
+          <span style="font-size:12px;color:var(--dm)">pt以下</span>
+        </div>
+        <button class="btn btn-p" onclick="refreshActivity()">適用</button>
+      </div>
+    </div>
+
+    <!-- フィルターバー -->
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--tx)">🔍 絞り込みフィルター
+        <span style="font-size:10px;color:var(--dm);font-weight:400;margin-left:8px">組み合わせ自由・ボタンを押すと即反映</span>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">課金状態</span>
+          <div class="btn-toggle" id="filter-purchase">
+            <button class="active" data-val="all">全員</button>
+            <button data-val="paid">課金者のみ</button>
+            <button data-val="unpaid">未課金のみ</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">最終ログイン</span>
+          <div class="btn-toggle" id="filter-login">
+            <button class="active" data-val="all">全員（30日）</button>
+            <button data-val="7">7日以内</button>
+            <button data-val="3">3日以内</button>
+            <button data-val="0">当日のみ</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">返信状態</span>
+          <div class="btn-toggle" id="filter-reply">
+            <button class="active" data-val="all">全員</button>
+            <button data-val="yes">返信あり</button>
+            <button data-val="no">返信なし</button>
+          </div>
+        </div>
+      </div>
+      <!-- フィルター結果サマリー -->
+      <div id="filter-summary" style="margin-top:10px;font-size:12px;color:var(--ac);font-family:'JetBrains Mono',monospace"></div>
+    </div>
+
+    <!-- ポイント状況 -->
+    <div class="section">
+      <div class="stitle">💰 現在ポイント状況（キャンペーン対象抽出）</div>
+      <div class="act-grid" id="act-pt-cards"></div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--og)">🎯 キャンペーン対象（ポイント枯渇）</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th colspan="4">ポイント帯</th><th style="color:var(--pp)">課金者</th><th style="color:var(--cy)">未課金者</th><th style="color:var(--og)">合計</th><th>平均pt</th></tr></thead>
+              <tbody id="tb-pt-campaign"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 数字クリックでID抽出→コピー。そのままキャンペーン配信リストに。</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--dm)">全ポイント帯分布</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>ポイント帯</th><th>人数</th><th>構成比</th><th style="color:var(--pp)">課金者</th><th style="color:var(--cy)">未課金者</th></tr></thead>
+              <tbody id="tb-pt-dist"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 差分分析 -->
+    <div id="act-diff-section" style="display:none">
+      <div class="section">
+        <div class="stitle">📊 活動量（差分）分析
+          <span id="act-period-label" style="font-size:11px;color:var(--dm);font-weight:400"></span>
+        </div>
+        <div id="act-warn" style="display:none;margin-bottom:12px"></div>
+        <div class="act-grid" id="act-diff-cards"></div>
+        <div class="two-col">
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--gn)">✅ 活動あり（ポイント消費）</div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>消費ポイント帯</th><th>人数</th><th>推定返信数</th></tr></thead>
+                <tbody id="tb-diff-active"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--rd)">❌ 活動なし（消費0）</div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>ステータス</th><th>人数</th><th>今日ログイン</th></tr></thead>
+                <tbody id="tb-diff-inactive"></tbody>
+              </table>
+            </div>
+            <div class="note">💡 ログインしてるのに消費0 = コンテンツが刺さっていない可能性。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="act-no-snapshot" style="padding:24px;text-align:center;color:var(--dm);font-size:12px">
+      📂 前回スナップショット（JSON）を読み込むと活動量差分が表示されます
+    </div>
+  </div>
+
+  <!-- 配信管理 -->
+  <div class="tc" id="tab-delivery">
+    <div class="note" style="margin-bottom:16px">
+      💡 一括配信は未ログイン者に送るため在籍データには存在しない。夜21時のCSVで「今日初めてログインした人（0日目）」の数が配信の反応数になる。
+    </div>
+
+    <!-- 配信数入力 -->
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:20px">
+      <div class="stitle" style="margin-bottom:14px">📤 本日の配信数（手動入力）</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">docomo</div>
+          <input type="number" class="pt-input" id="del-docomo" value="0" min="0" style="width:100%">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--ic, #5b7fff);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">iCloud</div>
+          <input type="number" class="pt-input" id="del-icloud" value="0" min="0" style="width:100%">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--og);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">au</div>
+          <input type="number" class="pt-input" id="del-au" value="0" min="0" style="width:100%">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--gn);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Gmail</div>
+          <input type="number" class="pt-input" id="del-gmail" value="0" min="0" style="width:100%">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Yahoo</div>
+          <input type="number" class="pt-input" id="del-yahoo" value="0" min="0" style="width:100%">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--cy);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Hotmail / Outlook</div>
+          <input type="number" class="pt-input" id="del-hotmail" value="0" min="0" style="width:100%">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px">
+          <div style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">SoftBank</div>
+          <input type="number" class="pt-input" id="del-softbank" value="0" min="0" style="width:100%">
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-p" onclick="renderDelivery()">計算する</button>
+      </div>
+    </div>
+
+    <!-- 結果テーブル -->
+    <div class="section">
+      <div class="stitle">📊 初回ログイン（0日目）分析
+        <span style="font-size:11px;color:var(--dm);font-weight:400">配信数に対して今日初めて来た人の反応</span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>キャリア</th>
+            <th>配信数<br><span style="font-weight:400;font-size:9px">手動入力</span></th>
+            <th>初回ログイン<br><span style="font-weight:400;font-size:9px">0日目</span></th>
+            <th>反応率<br><span style="font-weight:400;font-size:9px">初回÷配信</span></th>
+            <th style="color:var(--gn)">返信1</th>
+            <th style="color:var(--gn)">返信2</th>
+            <th style="color:var(--gn)">返信3</th>
+            <th style="color:var(--gn)">返信4</th>
+            <th style="color:var(--gn)">返信5</th>
+            <th style="color:var(--gn)">返信6</th>
+            <th style="color:var(--gn)">返信7+</th>
+            <th>ボット疑い</th>
+            <th>ボット率</th>
+            <th>実質反応<br><span style="font-weight:400;font-size:9px">ボット除く</span></th>
+            <th>実質率</th>
+          </tr></thead>
+          <tbody id="tb-delivery"></tbody>
+        </table>
+      </div>
+      <div class="note">
+        💡 実質反応＝初回ログインからボット疑いを除いた人数。ボット率が高く返信0が続くキャリアは配信コスト見直しのサイン。
+      </div>
+    </div>
+
+    <!-- 初日返信回数分布 -->
+    <div class="section">
+      <div class="stitle">💬 初日（0日目）返信回数分布
+        <span style="font-size:11px;color:var(--dm);font-weight:400">初回ログイン者が当日何回返信したか</span>
+      </div>
+      <div class="two-col">
+        <div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>返信回数</th>
+                <th>人数</th><th>構成比</th>
+                <th>うちボット疑い</th>
+                <th>実質（ボット除く）</th>
+              </tr></thead>
+              <tbody id="tb-delivery-reply"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 返信0＝来たが何もしなかった人。返信が増えるほどエンゲージ済みユーザー。</div>
+        </div>
+        <div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>キャリア</th>
+                <th>初回ログイン</th>
+                <th>返信0</th><th>率</th>
+                <th>返信1以上</th><th>率</th>
+                <th>返信3以上</th><th>率</th>
+                <th>返信7以上</th><th>率</th>
+              </tr></thead>
+              <tbody id="tb-delivery-reply-carrier"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ボット疑い -->
+  <div class="tc" id="tab-bot">
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      <div id="bot-total-display" style="background:var(--rd-bg);border:1px solid rgba(240,104,120,.3);border-radius:8px;padding:8px 16px;font-size:12px;color:var(--dm)">
+        <span style="color:var(--rd);font-family:JetBrains Mono,monospace;font-size:18px;font-weight:800" id="bot-cloud-count">-</span> クラウドIP
+        <span style="margin:0 10px;color:var(--bd)">|</span>
+        <span style="color:var(--rd);font-family:JetBrains Mono,monospace;font-size:18px;font-weight:800" id="bot-foreign-count">-</span> 海外IP
+        <span style="margin:0 10px;color:var(--bd)">|</span>
+        合計 <span style="color:var(--rd);font-family:JetBrains Mono,monospace;font-size:20px;font-weight:800" id="bot-all-count">-</span> 件
+      </div>
+      <button class="btn" style="background:var(--rd-bg);border-color:rgba(240,104,120,.3);color:var(--rd)" onclick="copyBotIds('cloud')">📋 クラウドIPをコピー</button>
+      <button class="btn" style="background:var(--rd-bg);border-color:rgba(240,104,120,.3);color:var(--rd)" onclick="copyBotIds('foreign')">📋 海外IPをコピー</button>
+      <button class="btn" style="background:var(--rd-bg);border-color:rgba(240,104,120,.3);color:var(--rd)" onclick="copyBotIds('all')">📋 全ボット疑いをコピー</button>
+      <span id="bot-copy-msg" style="font-size:12px;color:var(--gn)"></span>
+    </div>
+    <div class="section">
+      <div class="stitle">⚠️ 同一IP・複数アカウント <span class="bot-badge">ボット確定レベル</span></div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>IPアドレス</th><th>アカウント数</th><th>ID一覧（クリックでコピー）</th><th>送信数合計</th>
+          </tr></thead>
+          <tbody id="tb-bot-dup-ip"></tbody>
+        </table>
+      </div>
+      <div class="note">💡 同一IPから複数アカウントへのログイン = ボット・不正アカウントの決定的証拠。</div>
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="section">
+          <div class="stitle">クラウドIP <span class="bot-badge">ボット疑い高</span></div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>ID</th><th>IPアドレス</th><th>ステータス</th><th>送信数</th></tr></thead>
+              <tbody id="tb-bot-cloud"></tbody>
+            </table>
+          </div>
+          <div class="note">AWS/GCP/Cloudflare等のデータセンターIP。</div>
+        </div>
+      </div>
+      <div>
+        <div class="section">
+          <div class="stitle">その他海外IP</div>
+          <div class="tw">
+            <table>
+              <thead><tr><th>ID</th><th>IPアドレス</th><th>ステータス</th><th>送信数</th></tr></thead>
+              <tbody id="tb-bot-foreign"></tbody>
+            </table>
+          </div>
+          <div class="note">日本・クラウド以外のIP。海外VPN等の可能性。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== COLUMN MAP =====
+const CC={MID:0,MOBILE_EMAIL:7,PC_EMAIL:8,AD_CODE:12,REG_DT:21,SUB_STATUS:23,CUR_PT:24,TOTAL_BUY_PT:25,TOTAL_USE_PT:26,AMT:27,BUY_CNT:29,FIRST_BUY:30,LAST_BUY:31};
+
+// ===== ステータスマッピング =====
+// 「新しいやつ三日月が飛ぶよ」 = 登録10日目
+const STATUS_DAY_MAP={
+  '登録0日目':0,'登録1日目':1,'登録2日目':2,'登録2.5日目':2.5,'登録3日目':3,
+  '登録4日目（新）':4,'登録5日目（新）':5,'登録6日目（新）':6,
+  '登録7日目':7,'登録8日目':8,'登録9日目':9,
+  '新しいやつ三日月が飛ぶよ':10,
+  '登録11日目':11,'登録12日目':12,'登録13日目':13,'登録14日目':14,
+  '登録15日目':15,'登録16日目':16,'登録17日目':17,'登録18日目':18
+};
+// ステップ期間のラベルセット
+const STEP_LABELS=new Set(Object.keys(STATUS_DAY_MAP));
+// 表示用順序
+const STEP_ORDER=Object.entries(STATUS_DAY_MAP).sort((a,b)=>a[1]-b[1]).map(e=>e[0]);
+// 無料/境界/有料ゾーン
+function zoneOf(lbl){
+  const d=STATUS_DAY_MAP[lbl];
+  if(d===undefined)return 'post';
+  if(d<=2)return 'free';
+  if(d===2.5)return 'border';
+  return 'paid';
+}
+// 表示名（三日月を10日目として表示）
+function dispLabel(lbl){
+  if(lbl==='新しいやつ三日月が飛ぶよ')return '登録10日目';
+  return lbl;
+}
+
+// ===== IP分類 =====
+const JP_OCT=new Set(['1','14','27','49','60','61','106','110','111','113','114','118','119','122','123','124','125','126','128','133','138','150','153','160','163','180','182','183','202','210','211','219','220','221','222']);
+const CLOUD_OCT=new Set(['3','18','23','34','35','44','45','52','54','104','107','108','172']);
+function classifyIP(ip){
+  if(!ip||ip==='None'||ip==='')return 'unknown';
+  const f=ip.split('.')[0];
+  return CLOUD_OCT.has(f)?'cloud':JP_OCT.has(f)?'japan':'foreign';
+}
+
+// ===== CARRIER =====
+function getCarrier(email){
+  if(!email||!email.includes('@'))return 'その他';
+  const d=email.split('@')[1].toLowerCase();
+  if(['i.softbank.jp','softbank.ne.jp'].includes(d)||d.endsWith('.vodafone.ne.jp'))return 'SoftBank';
+  if(d==='docomo.ne.jp')return 'docomo';
+  if(d==='ezweb.ne.jp'||d==='au.com')return 'au';
+  if(['icloud.com','me.com','mac.com'].includes(d))return 'iCloud';
+  if(d==='gmail.com')return 'Gmail';
+  if(['ymobile.ne.jp','ymobile1.ne.jp','uqmobile.jp'].includes(d))return 'Y!mobile/UQ';
+  if(d==='yahoo.co.jp')return 'Yahoo';
+  if(['hotmail.com','hotmail.co.jp','outlook.com','outlook.jp','live.com','live.jp','msn.com'].includes(d))return 'Hotmail';
+  return 'その他';
+}
+const CC2={'SoftBank':'c-sb','docomo':'c-dc','au':'c-au','iCloud':'c-ic','Gmail':'c-gm','Y!mobile/UQ':'c-ym','Yahoo':'c-ot','Hotmail':'c-ht','その他':'c-ot'};
+function carrierBadge(c){return`<span class="carrier-badge ${CC2[c]||'c-ot'}">${c}</span>`}
+
+// ===== UTILS =====
+function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'0.0%'}
+function pctN(n,t){return t>0?n/t*100:0}
+function rc(r){return r>=50?'rh':r>=25?'rm':'rl'}
+function yen(v){return v===0?'-':'¥'+Math.round(v).toLocaleString()}
+function todayStr(){const n=new Date(),j=new Date(n.getTime()+9*3600000);return j.getUTCFullYear()+'-'+String(j.getUTCMonth()+1).padStart(2,'0')+'-'+String(j.getUTCDate()).padStart(2,'0')}
+function gapBucket(days){if(days===null||!isFinite(days)||days<0)return 'over7';if(days===0)return 'today';if(days===1)return 'd1';if(days<=3)return 'd3';if(days<=7)return 'd7';return 'over7'}
+
+// ===== MODAL =====
+let currentIds=[];
+function openModal(label,ids){
+  currentIds=ids;
+  document.getElementById('id-modal-label').textContent=label;
+  document.getElementById('id-modal-count').textContent=ids.length+'件';
+  const ta=document.getElementById('id-modal-list');
+  ta.value=ids.length===0?'（対象者なし）':ids.join('\n');
+  document.getElementById('id-copy-btn').textContent='📋 全IDをコピー';
+  document.getElementById('id-copy-btn').classList.remove('copied');
+  document.getElementById('id-modal-overlay').classList.add('show');
+  // テキストエリアを先頭にスクロール
+  ta.scrollTop=0;
+}
+function closeModal(){document.getElementById('id-modal-overlay').classList.remove('show')}
+document.getElementById('id-modal-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+function copyIds(){
+  // テキストエリアの内容をそのままコピー（改行区切り）
+  const text=document.getElementById('id-modal-list').value;
+  navigator.clipboard.writeText(text).then(()=>{
+    const b=document.getElementById('id-copy-btn');
+    b.textContent='✅ コピー完了（'+currentIds.length+'件）';
+    b.classList.add('copied');
+    setTimeout(()=>{b.textContent='📋 全IDをコピー';b.classList.remove('copied')},2000);
+  });
+}
+
+// ===== MEMBER MAP / CLICKABLE CELLS =====
+let memberMap={};
+function cTd(ids,label,style=''){
+  if(!ids||ids.length===0)return`<td${style?` style="${style}"`:''}>-</td>`;
+  const k='m'+Math.random().toString(36).slice(2,8);
+  memberMap[k]=ids;
+  return`<td class="has-ids"${style?` style="${style}"`:''}data-k="${k}"data-l="${label}">${ids.length.toLocaleString()}</td>`;
+}
+function bindClicks(){
+  document.querySelectorAll('td.has-ids').forEach(td=>{
+    if(td._b)return;td._b=true;
+    td.addEventListener('click',()=>{
+      const ids=memberMap[td.dataset.k]||[];
+      td.classList.add('id-flash');setTimeout(()=>td.classList.remove('id-flash'),280);
+      openModal(td.dataset.l,ids);
+    });
+  });
+}
+
+// ===== CSV PARSE =====
+function parseCSV(text){
+  const rows=[];let i=0,len=text.length;
+  while(i<len){
+    const row=[];let f='',q=false;
+    while(i<len){
+      const ch=text[i];
+      if(q){if(ch==='"'){if(i+1<len&&text[i+1]==='"'){f+='"';i+=2}else{q=false;i++}}else{f+=ch;i++}}
+      else{if(ch==='"'){q=true;i++}else if(ch===','){row.push(f);f='';i++}else if(ch==='\r'){i++}else if(ch==='\n'){i++;break}else{f+=ch;i++}}
+    }
+    row.push(f);if(row.length>=32)rows.push(row);
+  }
+  return rows;
+}
+
+// ===== XLSX PARSE =====
+function parseXlsx(wb){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  const users={};let i=2;
+  while(i<rows.length){
+    const rA=rows[i]||[],rB=rows[i+1]||[];
+    const mid=String(rA[1]||'').trim();
+    if(mid){
+      const sendM=String(rA[6]||'').match(/送信(\d+)/);
+      const adCode=String(rA[9]||'').trim();
+      const dayLabel=String(rA[10]||'').trim();
+      function toJSTStr(d){const j=new Date(d.getTime()+9*3600000);return j.toISOString().substring(0,10);}
+      let lastDay='';
+      const v=rA[12];
+      if(v instanceof Date)lastDay=toJSTStr(v);
+      else if(typeof v==='string'&&v.length>=10){
+        // "2026-03-29 00:00:00" or "2026-03-29" 形式
+        const m=v.match(/^(\d{4}-\d{2}-\d{2})/);
+        if(m)lastDay=m[1];
+      }
+      else if(typeof v==='number'&&v>0){const d=new Date(Date.UTC(1899,11,30+Math.floor(v)));lastDay=toJSTStr(d);}
+      let lastTime='';
+      const vt=rB[12];
+      if(vt instanceof Date)lastTime=`${String(vt.getHours()).padStart(2,'0')}:${String(vt.getMinutes()).padStart(2,'0')}`;
+      else if(typeof vt==='string')lastTime=String(vt).substring(0,5);
+      const ip=String(rA[13]||'').trim();
+      const email=String(rB[8]||'').trim();
+      users[mid]={sendCnt:sendM?parseInt(sendM[1]):0,adCode,dayLabel,lastDay,lastTime,ip,email};
+    }
+    i+=4;
+  }
+  return users;
+}
+
+// ===== MERGE =====
+function mergeData(csv,xl){
+  // 自動検出日付または今日
+  const today=document.getElementById('target-date')?.value||todayStr();
+  // 純広告コード（mergeData内でdayLabel計算に使用）
+  _renderPureAdCodes=new Set((localStorage.getItem('kaiun_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+  return csv.map(row=>{
+    const mid=String(row[CC.MID]||'').trim();
+    const x=xl[mid]||{};
+    const email=x.email||String(row[CC.MOBILE_EMAIL]||'').trim()||String(row[CC.PC_EMAIL]||'').trim();
+    const buyAmt=parseFloat(row[CC.AMT])||0;
+    const buyCnt=parseInt(row[CC.BUY_CNT])||0;
+    const firstBuy=String(row[CC.FIRST_BUY]||'').substring(0,10);
+    const regDt=String(row[CC.REG_DT]||'').substring(0,10);
+    const subStatus=String(row[CC.SUB_STATUS]||'').trim();
+    const sendCnt=x.sendCnt||0;
+    // adCodeはCSV列を優先（純広告コードのリストはCSV基準で登録されているため）
+    const adCodeFromCsv=String(row[CC.AD_CODE]||'').trim();
+    const adCodeFromXl=x.adCode||'';
+    const adCode=adCodeFromCsv||adCodeFromXl||'(なし)';
+
+    // 純広告判定：CSVのadCodeを優先して照合
+    const _isAdUser=_renderPureAdCodes.size>0&&(
+      _renderPureAdCodes.has(adCodeFromCsv)||
+      (!adCodeFromCsv&&_renderPureAdCodes.has(adCodeFromXl))
+    );
+    let dayLabel;
+    if(_isAdUser&&regDt&&regDt.length===10){
+      const diffDays=Math.floor((new Date(today)-new Date(regDt))/86400000);
+      if(diffDays===0)dayLabel='登録0日目';
+      else if(diffDays===1)dayLabel='登録1日目';
+      else if(diffDays===2)dayLabel='登録2日目';
+      else if(diffDays<=3)dayLabel='登録3日目';
+      else if(diffDays<=4)dayLabel='登録4日目（新）';
+      else if(diffDays<=5)dayLabel='登録5日目（新）';
+      else if(diffDays<=6)dayLabel='登録6日目（新）';
+      else if(diffDays<=7)dayLabel='登録7日目';
+      else if(diffDays<=8)dayLabel='登録8日目';
+      else if(diffDays<=9)dayLabel='登録9日目';
+      else if(diffDays<=10)dayLabel='新しいやつ三日月が飛ぶよ';
+      else if(diffDays<=11)dayLabel='登録11日目';
+      else if(diffDays<=12)dayLabel='登録12日目';
+      else if(diffDays<=13)dayLabel='登録13日目';
+      else if(diffDays<=14)dayLabel='登録14日目';
+      else if(diffDays<=15)dayLabel='登録15日目';
+      else if(diffDays<=16)dayLabel='登録16日目';
+      else if(diffDays<=17)dayLabel='登録17日目';
+      else if(diffDays<=18)dayLabel='登録18日目';
+      else dayLabel=subStatus||`登録${diffDays}日目`;
+    } else {
+      // CSV系：Excelのdayラベルをそのまま使う（初回ログイン基準）
+      dayLabel=x.dayLabel||subStatus||'(不明)';
+    }
+    const isStep=STEP_LABELS.has(dayLabel);
+    const isToday=x.lastDay===today;
+    const lGap=x.lastDay?Math.floor((new Date(today)-new Date(x.lastDay))/86400000):999;
+    const ipClass=classifyIP(x.ip||'');
+    const lastHour=(x.lastTime&&isToday)?parseInt(x.lastTime.split(':')[0]):null;
+    const regToBuy=(regDt&&firstBuy&&firstBuy.length===10)?Math.floor((new Date(firstBuy)-new Date(regDt))/86400000):null;
+    const isPurchaser=buyAmt>0||buyCnt>0;
+    const is7plus=sendCnt>=7;
+    const isHot=is7plus&&!isPurchaser;// 7通以上返信・未課金
+    const curPt=parseInt(row[CC.CUR_PT])||0;
+    const totalUsePt=parseInt(row[CC.TOTAL_USE_PT])||0;
+    return{mid,email,carrier:getCarrier(email),buyAmt,buyCnt,firstBuy,regDt,subStatus,
+      sendCnt,dayLabel,isStep,isToday,lGap,ipClass,lastHour,regToBuy,
+      isPurchaser,is7plus,isHot,ip:x.ip||'',adCode,
+      curPt,totalUsePt};
+  });
+}
+
+// ===== ANALYZE =====
+let adcodeStore=null,adSortBound=false;
+
+function analyze(data){
+  memberMap={};
+  const today=todayStr();
+  // 純広告コードを毎回最新で更新（グローバルに反映）
+  _renderPureAdCodes=new Set((localStorage.getItem('kaiun_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+  _userMap={}; // グローバルをリセット
+  // ステップ別
+  const stepMap={};STEP_ORDER.forEach(l=>stepMap[l]={total:[],login:[],s0:[],s1:[],s2:[],s3:[],s4:[],s5:[],s6:[],s7p:[],hot:[],pur:[],amount:0});
+  // ステップ後ラベル別
+  const postLabels={};
+  // 課金者
+  const purAll=[],purRet={today:[],d1:[],d3:[],d7:[],over7:[]};
+  const purPostRet={today:[],d1:[],d3:[],d7:[],over7:[]};
+  const firstBuyStatus={};
+  const d2bBuckets=[[0,1,'当日'],[1,3,'1〜2日'],[3,7,'3〜6日'],[7,14,'7〜13日'],[14,30,'14〜29日'],[30,9999,'30日以上']].map(b=>({...{lo:b[0],hi:b[1],label:b[2]},ids:[]}));
+  const buyCountDist={'1回':[],'2〜5回':[],'6〜10回':[],'11回+':[]};
+  // 広告コード
+  const adcodes={};
+  // キャリア
+  const carriers={};
+  // ボット
+  const botCloud=[],botForeign=[];
+  // 時間帯
+  const hourly=Array.from({length:24},()=>[]);
+  // 7通以上未課金
+  const hotByStep={};
+  let totalAmt=0;
+
+  function ensAd(k){if(!adcodes[k])adcodes[k]={total:[],login:[],s7p:[],pur:[],amount:0};return adcodes[k]}
+  function ensCr(k){if(!carriers[k])carriers[k]={total:[],ret:{today:[],d1:[],d3:[],d7:[],over7:[]},bot:[]};return carriers[k]}
+  function ensPost(k){if(!postLabels[k])postLabels[k]={total:[],login:[],pur:[],amount:0,sendDist:{s0:[],s1:[],s2:[],s3:[],s4:[],s5:[],s6:[],s7p:[]}};return postLabels[k]}
+
+  data.forEach(u=>{
+    // midをキーにユーザーオブジェクトをキャッシュ（分類に使用）
+    _userMap[u.mid]=u;
+    totalAmt+=u.buyAmt;
+    const ad=ensAd(u.adCode);ad.total.push(u.mid);
+    const cr=ensCr(u.carrier);cr.total.push(u.mid);
+    const gb=gapBucket(u.lGap);cr.ret[gb].push(u.mid);
+
+    if(u.isToday){ad.login.push(u.mid);if(u.lastHour!==null)hourly[u.lastHour].push(u.mid);}
+    if(u.is7plus)ad.s7p.push(u.mid);
+    if(u.isPurchaser){ad.pur.push(u.mid);ad.amount+=u.buyAmt;purAll.push(u.mid);purRet[gb].push(u.mid);}
+    if(u.ipClass==='cloud'||u.ipClass==='foreign')cr.bot.push(u.mid);
+
+    if(u.isStep){
+      const st=stepMap[u.dayLabel];
+      if(st){
+        st.total.push(u.mid);
+        if(u.isToday)st.login.push(u.mid);
+        if(u.sendCnt===0)st.s0.push(u.mid);
+        else if(u.sendCnt===1)st.s1.push(u.mid);
+        else if(u.sendCnt===2)st.s2.push(u.mid);
+        else if(u.sendCnt===3)st.s3.push(u.mid);
+        else if(u.sendCnt===4)st.s4.push(u.mid);
+        else if(u.sendCnt===5)st.s5.push(u.mid);
+        else if(u.sendCnt===6)st.s6.push(u.mid);
+        else{st.s7p.push(u.mid);if(u.isHot){st.hot.push(u.mid);if(!hotByStep[u.dayLabel])hotByStep[u.dayLabel]=[];hotByStep[u.dayLabel].push(u.mid);}}
+        if(u.isPurchaser){st.pur.push(u.mid);st.amount+=u.buyAmt;}
+      }
+    } else {
+      // ステップ後
+      const pl=ensPost(u.dayLabel);pl.total.push(u.mid);
+      if(u.isToday)pl.login.push(u.mid);
+      if(u.isPurchaser){pl.pur.push(u.mid);pl.amount+=u.buyAmt;purPostRet[gb].push(u.mid);}
+      const sd=u.sendCnt===0?'s0':u.sendCnt===1?'s1':u.sendCnt===2?'s2':u.sendCnt===3?'s3':u.sendCnt===4?'s4':u.sendCnt===5?'s5':u.sendCnt===6?'s6':'s7p';
+      pl.sendDist[sd].push(u.mid);
+    }
+
+    // 課金者詳細
+    if(u.isPurchaser){
+      if(u.buyCnt<=1)buyCountDist['1回'].push(u.mid);
+      else if(u.buyCnt<=5)buyCountDist['2〜5回'].push(u.mid);
+      else if(u.buyCnt<=10)buyCountDist['6〜10回'].push(u.mid);
+      else buyCountDist['11回+'].push(u.mid);
+      if(u.regToBuy!==null&&u.regToBuy>=0){for(const b of d2bBuckets){if(u.regToBuy>=b.lo&&u.regToBuy<b.hi){b.ids.push(u.mid);break;}}}
+      // 初課金発生ステータス
+      if(!firstBuyStatus[u.dayLabel])firstBuyStatus[u.dayLabel]=[];
+      firstBuyStatus[u.dayLabel].push(u.mid);
+    }
+
+    // ボット
+    if(u.ipClass==='cloud')botCloud.push({mid:u.mid,ip:u.ip,label:u.dayLabel,send:u.sendCnt});
+    else if(u.ipClass==='foreign')botForeign.push({mid:u.mid,ip:u.ip,label:u.dayLabel,send:u.sendCnt});
+  });
+
+  adcodeStore=adcodes;
+  // IP重複集計
+  const ipToIds={};
+  data.forEach(u=>{if(u.ip&&u.ip!==''){if(!ipToIds[u.ip])ipToIds[u.ip]=[];ipToIds[u.ip].push({mid:u.mid,send:u.sendCnt,label:u.dayLabel});}});
+  const dupIPs=Object.entries(ipToIds).filter(([ip,list])=>list.length>1).sort((a,b)=>b[1].length-a[1].length);
+
+  return{stepMap,postLabels,purAll,purRet,purPostRet,firstBuyStatus,d2bBuckets,buyCountDist,adcodes,carriers,hourly,botCloud,botForeign,hotByStep,totalAmt,total:data.length,dupIPs};
+}
+
+// ===== RENDER =====
+function render(res){
+  const{stepMap,postLabels,purAll,purRet,purPostRet,firstBuyStatus,d2bBuckets,buyCountDist,adcodes,carriers,hourly,botCloud,botForeign,hotByStep,totalAmt,total,dupIPs}=res;
+
+  // ステップ期間の集計
+  const stepTotals={total:[],login:[],s0:[],s1:[],s2:[],s3:[],s4:[],s5:[],s6:[],s7p:[],hot:[],pur:[],amount:0};
+  STEP_ORDER.forEach(l=>{const d=stepMap[l];if(!d)return;['total','login','s0','s1','s2','s3','s4','s5','s6','s7p','hot','pur'].forEach(k=>stepTotals[k].push(...d[k]));stepTotals.amount+=d.amount;});
+  // ステップ後の集計
+  const postAll=Object.values(postLabels).reduce((a,d)=>[...a,...d.total],[]);
+  const postLogin=Object.values(postLabels).reduce((a,d)=>[...a,...d.login],[]);
+  const postPur=Object.values(postLabels).reduce((a,d)=>[...a,...d.pur],[]);
+  const postAmt=Object.values(postLabels).reduce((s,d)=>s+d.amount,0);
+  const allLogin=[...stepTotals.login,...postLogin];
+  const allLoginAd=allLogin.filter(mid=>{const u=_userMap[mid];return u&&isAdUser(u);});
+  const allLoginCsv=allLogin.filter(mid=>{const u=_userMap[mid];return u&&!isAdUser(u);});
+  const allLoginNew=allLogin.filter(mid=>{const u=_userMap[mid];return u&&u.dayLabel==='登録0日目';});
+  const allLoginPaid=allLogin.filter(mid=>{const u=_userMap[mid];return u&&u.isPurchaser&&u.dayLabel!=='登録0日目';});
+  const allLoginUnpaid=allLogin.filter(mid=>{const u=_userMap[mid];return u&&!u.isPurchaser&&u.dayLabel!=='登録0日目';});
+  const botTotal=botCloud.length+botForeign.length;
+
+  // ===== フェーズカード =====
+  const stepReply1=mergedData.filter(u=>STEP_LABELS.has(u.dayLabel)&&u.sendCnt>=1);
+  const stepReply7=mergedData.filter(u=>STEP_LABELS.has(u.dayLabel)&&u.sendCnt>=7);
+  document.getElementById('phase-step').innerHTML=`
+    <div class="pm"><div class="pv">${stepTotals.total.length.toLocaleString()}</div><div class="pl">在籍</div></div>
+    <div class="pm"><div class="pv" style="color:var(--gn)">${stepTotals.login.length.toLocaleString()}</div><div class="pl">今日ログイン</div></div>
+    <div class="pm"><div class="pv" style="color:var(--og)">${stepTotals.hot.length.toLocaleString()}</div><div class="pl">7通以上未課金</div></div>
+    <div class="pm"><div class="pv" style="color:var(--pp)">${stepTotals.pur.length.toLocaleString()}</div><div class="pl">課金者</div></div>
+    <div class="pm"><div class="pv" style="color:var(--og);font-size:15px">¥${Math.round(stepTotals.amount).toLocaleString()}</div><div class="pl">売上</div></div>
+    <div class="pm"><div class="pv" style="color:var(--cy)">${pct(stepTotals.pur.length,stepTotals.total.length)}</div><div class="pl">課金率</div></div>
+    <div class="pm" style="grid-column:1/-1;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)">
+      <div style="font-size:10px;color:var(--dm);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">返信エンゲージ率（返信1以上の人中で7通以上の割合）</div>
+      <div style="display:flex;gap:16px;align-items:baseline;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--dm)">返信1以上: <span style="font-family:JetBrains Mono,monospace;color:var(--tx);font-size:14px">${stepReply1.length}人</span></span>
+        <span style="font-size:20px;color:var(--dm)">→</span>
+        <span style="font-size:11px;color:var(--dm)">7通以上: <span style="font-family:JetBrains Mono,monospace;color:var(--cy);font-size:16px;font-weight:800">${stepReply7.length}人</span></span>
+        <span style="font-family:JetBrains Mono,monospace;font-size:22px;font-weight:800;color:var(--cy)">${pct(stepReply7.length,stepReply1.length)}</span>
+      </div>
+    </div>`;
+  document.getElementById('phase-post').innerHTML=`
+    <div class="pm"><div class="pv">${postAll.length.toLocaleString()}</div><div class="pl">在籍</div></div>
+    <div class="pm"><div class="pv" style="color:var(--gn)">${postLogin.length.toLocaleString()}</div><div class="pl">今日ログイン</div></div>
+    <div class="pm"><div class="pv" style="color:var(--dm)">-</div><div class="pl">（送信数は参考）</div></div>
+    <div class="pm"><div class="pv" style="color:var(--pp)">${postPur.length.toLocaleString()}</div><div class="pl">課金者</div></div>
+    <div class="pm"><div class="pv" style="color:var(--og);font-size:15px">¥${Math.round(postAmt).toLocaleString()}</div><div class="pl">売上</div></div>
+    <div class="pm"><div class="pv" style="color:var(--cy)">${pct(postPur.length,postAll.length)}</div><div class="pl">課金率</div></div>`;
+
+  // ===== サマリーカード =====
+  document.getElementById('summary-cards').innerHTML=`
+    <div class="sc"><div class="l">総会員</div><div class="v">${total.toLocaleString()}</div></div>
+    <div class="sc"><div class="l">今日ログイン</div><div class="v" style="color:var(--gn)">${allLogin.length.toLocaleString()}</div><div class="sb">${pct(allLogin.length,total)}</div></div>
+    <div class="sc"><div class="l">CSV系ログイン</div><div class="v" style="color:var(--cy)">${allLoginCsv.length.toLocaleString()}</div><div class="sb">${pct(allLoginCsv.length,allLogin.length)} (内訳)</div></div>
+    <div class="sc"><div class="l">純広告ログイン</div><div class="v" style="color:var(--og)">${allLoginAd.length.toLocaleString()}</div><div class="sb">${allLoginAd.length>0?pct(allLoginAd.length,allLogin.length)+' (内訳)':'純広告コード未設定'}</div></div>
+    <div class="sc" style="border-left:3px solid var(--og)"><div class="l">新規（0日目）</div><div class="v" style="color:var(--og)">${allLoginNew.length.toLocaleString()}</div><div class="sb">流入指標</div></div>
+    <div class="sc highlight"><div class="l">7通以上未課金</div><div class="v" style="color:var(--og)">${stepTotals.hot.length.toLocaleString()}</div><div class="sb">課金候補</div></div>
+    <div class="sc"><div class="l">累計課金者</div><div class="v" style="color:var(--pp)">${purAll.length.toLocaleString()}</div><div class="sb">${pct(purAll.length,total)}</div></div>
+    <div class="sc"><div class="l">累計売上</div><div class="v" style="color:var(--og);font-size:17px">¥${Math.round(totalAmt).toLocaleString()}</div></div>
+    <div class="sc${botTotal>0?' alert':''}"><div class="l">ボット疑い</div><div class="v" style="color:var(--rd)">${botTotal.toLocaleString()}</div><div class="sb">クラウド+海外IP</div></div>
+    <div class="sc highlight"><div class="l">返信者中7通以上率</div><div class="v" style="color:var(--cy)">${pct(stepTotals.s7p.length,stepTotals.total.filter(id=>{const u=mergedData.find(u=>u.mid===id);return u&&u.sendCnt>=1;}).length)}</div><div class="sb">返信1以上→7通以上</div></div>`;
+
+  // ===== 今日の状況 =====
+  // 7通以上未課金テーブル
+  const hotSteps=STEP_ORDER.filter(l=>stepMap[l]&&stepMap[l].hot.length>0);
+  document.getElementById('tb-hot').innerHTML=hotSteps.length===0
+    ?'<tr><td colspan="5" style="text-align:center;color:var(--dm);padding:16px">現在対象者なし</td></tr>'
+    :hotSteps.map(l=>{
+      const d=stepMap[l];const loginIds=d.hot.filter(id=>d.login.includes(id));
+      const avg=d.hot.length>0?(d.hot.reduce((_,mid)=>{const u=mergedData.find(u=>u.mid===mid);return _+(u?u.sendCnt:0)},0)/d.hot.length).toFixed(1):'0';
+      return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${dispLabel(l)}</td>${cTd(d.hot,'7通以上未課金：'+l,'color:var(--og);font-weight:700')}${cTd(loginIds,'7通以上未課金・今日ログイン：'+l)}<td class="${rc(pctN(loginIds.length,d.hot.length))}">${pct(loginIds.length,d.hot.length)}</td><td>${avg}</td></tr>`;
+    }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(stepTotals.hot,'7通以上未課金 全体','color:var(--og);font-weight:700')}<td>-</td><td>-</td><td>-</td></tr>`;
+
+  // 今日のログイン→送信転換（ステップ期間）
+  let ctAll=[],ctLogin=[],ctSend=[],ctNo=[];
+  const todayStepRows=STEP_ORDER.filter(l=>stepMap[l]&&stepMap[l].total.length>0).map(l=>{
+    const d=stepMap[l];
+    const loginSend=d.login.filter(id=>{const u=mergedData.find(u=>u.mid===id);return u&&u.sendCnt>0;});
+    const loginNo=d.login.filter(id=>!loginSend.includes(id));
+    ctAll.push(...d.total);ctLogin.push(...d.login);ctSend.push(...loginSend);ctNo.push(...loginNo);
+    const zone=zoneOf(l);
+    return`<tr class="row-${zone}">
+      <td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${dispLabel(l)}</td>
+      ${cTd(d.total,'在籍：'+l)}
+      ${cTd(d.login,'今日ログイン：'+l)}
+      <td class="${rc(pctN(d.login.length,d.total.length))}">${pct(d.login.length,d.total.length)}</td>
+      ${cTd(loginSend,'今日ログイン→送信あり：'+l,'color:var(--ac);font-weight:700')}
+      <td class="${rc(pctN(loginSend.length,d.login.length))}">${pct(loginSend.length,d.login.length)}</td>
+      ${cTd(loginNo,'今日ログインで送信0：'+l,'color:var(--rd)')}
+    </tr>`;
+  });
+  todayStepRows.push(`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(ctAll,'ステップ期間 全在籍')}${cTd(ctLogin,'ステップ期間 今日ログイン')}<td class="${rc(pctN(ctLogin.length,ctAll.length))}">${pct(ctLogin.length,ctAll.length)}</td>${cTd(ctSend,'今日ログイン→送信','color:var(--ac)')}<td class="${rc(pctN(ctSend.length,ctLogin.length))}">${pct(ctSend.length,ctLogin.length)}</td>${cTd(ctNo,'送信0（要注目）','color:var(--rd)')}</tr>`);
+  document.getElementById('tb-today-step').innerHTML=todayStepRows.join('');
+
+  // 時間帯
+  const maxH=Math.max(...hourly.map(a=>a.length),1);
+  const hRows=[];
+  for(let h=0;h<24;h++){const ids=hourly[h];if(!ids.length)continue;const w=(ids.length/maxH*100).toFixed(0);const k='h'+h;memberMap[k]=ids;hRows.push(`<div class="h-row"><span class="h-lbl">${String(h).padStart(2,'0')}時</span><div class="h-cell"><div class="h-track"><div class="h-fill" style="width:${w}%"></div></div><span class="h-num has" data-k="${k}" data-l="${h}時ログイン">${ids.length}</span></div></div>`);}
+  document.getElementById('hourly-rows').innerHTML=hRows.length?hRows.join(''):'<div style="padding:18px;text-align:center;color:var(--dm)">本日のログインなし</div>';
+
+  // 課金者の今日ログイン状況
+  const rLabels=[['today','今日'],['d1','1日'],['d3','2〜3日'],['d7','4〜7日'],['over7','7日超']];
+  document.getElementById('tb-pur-login-today').innerHTML=rLabels.map(([k,lbl])=>{const ids=purRet[k]||[];return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${lbl}</td>${cTd(ids,'課金者 最終ログイン '+lbl)}<td class="${rc(pctN(ids.length,purAll.length))}">${pct(ids.length,purAll.length)}</td></tr>`;}).join('');
+
+  // ===== ステップ別タブ =====
+  const stepRows=STEP_ORDER.filter(l=>stepMap[l]&&stepMap[l].total.length>0).map(l=>{
+    const d=stepMap[l];const t=d.total.length;const zone=zoneOf(l);
+    return`<tr class="row-${zone}">
+      <td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${dispLabel(l)}</td>
+      ${cTd(d.total,'在籍：'+l)}
+      ${cTd(d.login,'今日ログイン：'+l)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>
+      ${cTd(d.s0,'送信0件：'+l,'color:var(--rd)')}
+      ${(()=>{const total=[...d.s1,...d.s2,...d.s3,...d.s4,...d.s5,...d.s6,...d.s7p];return total.length>0?cTd(total,'送信合計：'+l,'color:var(--cy)'):'<td style="color:var(--dm)">-</td>';})()}
+      ${cTd(d.s1,'送信1件：'+l)}
+      ${cTd(d.s2,'送信2件：'+l)}
+      ${cTd(d.s3,'送信3件：'+l)}
+      ${cTd(d.s4,'送信4件：'+l)}
+      ${cTd(d.s5,'送信5件：'+l)}
+      ${cTd(d.s6,'送信6件：'+l)}
+      ${cTd(d.s7p,'送信7件+：'+l,'color:var(--gn);font-weight:700')}
+      ${cTd(d.hot,'7通以上未課金：'+l,'color:var(--og)')}
+      ${cTd(d.pur,'課金者：'+l,'color:var(--pp)')}<td class="${rc(pctN(d.pur.length,t))}">${pct(d.pur.length,t)}</td>
+      <td style="color:${d.amount>0?'var(--og)':'var(--dm)'}">${yen(d.amount)}</td>
+    </tr>`;
+  });
+  const st=stepTotals;
+  stepRows.push(`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(st.total,'ステップ全在籍')}${cTd(st.login,'ステップ今日ログイン')}<td class="${rc(pctN(st.login.length,st.total.length))}">${pct(st.login.length,st.total.length)}</td>${cTd(st.s0,'送信0合計','color:var(--rd)')}${(()=>{const t=[...st.s1,...st.s2,...st.s3,...st.s4,...st.s5,...st.s6,...st.s7p];return t.length>0?cTd(t,'送信合計','color:var(--cy)'):'<td>-</td>';})()}${cTd(st.s1,'送信1合計')}${cTd(st.s2,'送信2合計')}${cTd(st.s3,'送信3合計')}${cTd(st.s4,'送信4合計')}${cTd(st.s5,'送信5合計')}${cTd(st.s6,'送信6合計')}${cTd(st.s7p,'送信7+合計','color:var(--gn);font-weight:700')}${cTd(st.hot,'7通以上未課金合計','color:var(--og)')}${cTd(st.pur,'課金者合計','color:var(--pp)')}<td class="${rc(pctN(st.pur.length,st.total.length))}">${pct(st.pur.length,st.total.length)}</td><td style="color:var(--og)">¥${Math.round(st.amount).toLocaleString()}</td></tr>`);
+  document.getElementById('tb-step').innerHTML=stepRows.join('');
+
+  // ===== ステップ後タブ =====
+  const postLblKeys=Object.keys(postLabels).sort((a,b)=>postLabels[b].total.length-postLabels[a].total.length);
+  document.getElementById('tb-post-labels').innerHTML=postLblKeys.map(l=>{
+    const d=postLabels[l];const t=d.total.length;
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${l}</td>${cTd(d.total,'在籍：'+l)}${cTd(d.login,'今日ログイン：'+l)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>${cTd(d.pur,'課金者：'+l,'color:var(--pp)')}<td class="${rc(pctN(d.pur.length,t))}">${pct(d.pur.length,t)}</td><td style="color:${d.amount>0?'var(--og)':'var(--dm)'}">${yen(d.amount)}</td></tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(postAll,'ステップ後全在籍')}${cTd(postLogin,'ステップ後今日ログイン')}<td>-</td>${cTd(postPur,'ステップ後課金者','color:var(--pp)')}<td class="${rc(pctN(postPur.length,postAll.length))}">${pct(postPur.length,postAll.length)}</td><td style="color:var(--og)">¥${Math.round(postAmt).toLocaleString()}</td></tr>`;
+
+  // ステップ後 送信数分布
+  const postSendKeys=['s0','s1','s2','s3','s4','s5','s6','s7p'];const postSendLabels=['送信0件','送信1件','送信2件','送信3件','送信4件','送信5件','送信6件','送信7件+'];
+  const postSendAll={s0:[],s1:[],s2:[],s3:[],s4:[],s5:[],s6:[],s7p:[]};
+  postLblKeys.forEach(l=>postSendKeys.forEach(k=>postSendAll[k].push(...(postLabels[l].sendDist[k]||[]))));
+  document.getElementById('tb-post-send').innerHTML=postSendKeys.map((k,i)=>{
+    const ids=postSendAll[k];const purIds=ids.filter(id=>purAll.includes(id));
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${postSendLabels[i]}</td>${cTd(ids,'ステップ後 '+postSendLabels[i])}${cTd(purIds,'ステップ後 '+postSendLabels[i]+' 課金者','color:var(--pp)')}<td class="${rc(pctN(purIds.length,ids.length))}">${pct(purIds.length,ids.length)}</td></tr>`;
+  }).join('');
+
+  // ステップ後 課金者ログイン継続
+  document.getElementById('tb-post-pur-ret').innerHTML=rLabels.map(([k,lbl])=>{const ids=purPostRet[k]||[];return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${lbl}</td>${cTd(ids,'ステップ後課金者 最終ログイン '+lbl)}<td class="${rc(pctN(ids.length,postPur.length))}">${pct(ids.length,postPur.length)}</td></tr>`;}).join('');
+
+  // ステップ後 広告コード別（ステップ後の人だけ）
+  const postAdMap={};postLblKeys.forEach(l=>{const d=postLabels[l];d.total.forEach(mid=>{const u=mergedData.find(u=>u.mid===mid);if(!u)return;const ak=u.adCode;if(!postAdMap[ak])postAdMap[ak]={total:[],login:[],pur:[],amount:0};postAdMap[ak].total.push(mid);if(d.login.includes(mid))postAdMap[ak].login.push(mid);if(d.pur.includes(mid)){postAdMap[ak].pur.push(mid);postAdMap[ak].amount+=u.buyAmt;}});});
+  const postAdKeys=Object.keys(postAdMap).sort((a,b)=>postAdMap[b].total.length-postAdMap[a].total.length);
+  document.getElementById('tb-post-adcode').innerHTML=postAdKeys.slice(0,15).map(k=>{const d=postAdMap[k];const t=d.total.length;return`<tr><td style="font-size:11px;font-family:'Noto Sans JP',sans-serif;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${k}">${k}</td>${cTd(d.total,'ステップ後在籍：'+k)}${cTd(d.login,'ステップ後ログイン：'+k)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>${cTd(d.pur,'ステップ後課金：'+k,'color:var(--pp)')}<td class="${rc(pctN(d.pur.length,t))}">${pct(d.pur.length,t)}</td><td style="color:${d.amount>0?'var(--og)':'var(--dm)'}">${yen(d.amount)}</td></tr>`;}).join('');
+
+  // ===== 課金者分析タブ =====
+  const fbStatusKeys=Object.keys(firstBuyStatus).sort((a,b)=>(firstBuyStatus[b]||[]).length-(firstBuyStatus[a]||[]).length);
+  const fbTotal=fbStatusKeys.reduce((s,k)=>s+(firstBuyStatus[k]||[]).length,0);
+  document.getElementById('tb-first-buy-status').innerHTML=fbStatusKeys.map(k=>{const ids=firstBuyStatus[k]||[];return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${k}</td>${cTd(ids,'初課金時ステータス：'+k)}<td>${pct(ids.length,fbTotal)}</td></tr>`;}).join('');
+  let cumD2B=0;const d2bAll=d2bBuckets.reduce((s,b)=>s+b.ids.length,0);
+  document.getElementById('tb-days-to-buy').innerHTML=d2bBuckets.map(b=>{cumD2B+=b.ids.length;return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${b.label}</td>${cTd(b.ids,'初課金 '+b.label)}<td>${pct(b.ids.length,d2bAll)}</td><td>${pct(cumD2B,d2bAll)}</td></tr>`;}).join('');
+  const bcK=['1回','2〜5回','6〜10回','11回+'];const bcAll=bcK.reduce((s,k)=>s+(buyCountDist[k]||[]).length,0);
+  document.getElementById('tb-buycount').innerHTML=bcK.map(k=>{const ids=buyCountDist[k]||[];return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${k}</td>${cTd(ids,'購入'+k)}<td>${pct(ids.length,bcAll)}</td></tr>`;}).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(purAll,'全課金者')}<td>100%</td></tr>`;
+  document.getElementById('tb-pur-ret-all').innerHTML=rLabels.map(([k,lbl])=>{const ids=purRet[k]||[];return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${lbl}</td>${cTd(ids,'課金者全体 最終ログイン '+lbl)}<td class="${rc(pctN(ids.length,purAll.length))}">${pct(ids.length,purAll.length)}</td></tr>`;}).join('');
+
+  // ===== 広告コード別タブ =====
+  renderAdCode('t','desc');
+  if(!adSortBound){
+    adSortBound=true;
+    document.querySelectorAll('#tab-adcode .sortable').forEach(th=>{
+      th.addEventListener('click',()=>{const col=th.dataset.sort,wd=th.classList.contains('desc');document.querySelectorAll('#tab-adcode .sortable').forEach(t=>t.classList.remove('asc','desc'));const dir=wd?'asc':'desc';th.classList.add(dir);renderAdCode(col,dir);});
+    });
+  }
+  const iT=document.querySelector('#tab-adcode .sortable[data-sort="t"]');
+  if(iT){document.querySelectorAll('#tab-adcode .sortable').forEach(t=>t.classList.remove('asc','desc'));iT.classList.add('desc');}
+
+  // ===== キャリア別タブ =====
+  const cKeys=Object.keys(carriers).sort((a,b)=>carriers[b].total.length-carriers[a].total.length);
+  const cAll=cKeys.reduce((a,k)=>[...a,...carriers[k].total],[]);
+  const cTotR={today:[],d1:[],d3:[],d7:[],over7:[]};
+  cKeys.forEach(k=>Object.keys(cTotR).forEach(b=>cTotR[b].push(...(carriers[k].ret[b]||[]))));
+  const cBotAll=cKeys.reduce((a,k)=>[...a,...(carriers[k].bot||[])],[]);
+  document.getElementById('tb-carrier').innerHTML=cKeys.map(k=>{
+    const d=carriers[k];const t=d.total.length;const bot=d.bot||[];
+    const botRate=pctN(bot.length,t);
+    return`<tr><td>${carrierBadge(k)}</td>${cTd(d.total,'在籍：'+k)}<td>${pct(t,cAll.length)}</td>${['today','d1','d3','d7','over7'].map((b,i)=>`${cTd(d.ret[b],k+' 最終ログイン '+['今日','1日','2-3日','4-7日','7日超'][i])}<td class="${i>=4?'rl':rc(pctN((d.ret[b]||[]).length,t))}">${pct((d.ret[b]||[]).length,t)}</td>`).join('')}${cTd(bot,k+' ボット疑い','border-left:2px solid var(--rd);color:var(--rd);font-weight:${bot.length>0?700:400}')}<td style="color:${botRate>=30?'var(--rd)':botRate>=15?'var(--og)':'var(--dm)'};font-weight:${botRate>=30?700:400}">${pct(bot.length,t)}</td></tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(cAll,'全在籍')}<td>100%</td>${['today','d1','d3','d7','over7'].map((b,i)=>`${cTd(cTotR[b],'全 '+['今日','1日','2-3日','4-7日','7日超'][i])}<td class="${rc(pctN(cTotR[b].length,cAll.length))}">${pct(cTotR[b].length,cAll.length)}</td>`).join('')}${cTd(cBotAll,'全キャリア ボット疑い','border-left:2px solid var(--rd);color:var(--rd);font-weight:700')}<td style="color:var(--rd);font-weight:700">${pct(cBotAll.length,cAll.length)}</td></tr>`;
+
+  // ===== ボットタブ =====
+  function botTbl(list){return list.length===0?'<tr><td colspan="4" style="text-align:center;color:var(--dm);padding:16px">なし</td></tr>':list.map(b=>`<tr><td style="font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;color:var(--ac)"onclick="openModal('${b.mid}',[&quot;${b.mid}&quot;])">${b.mid}</td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">${b.ip}</td><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${b.label}</td><td>${b.send}</td></tr>`).join('');}
+  botCloudIds=botCloud.map(b=>b.mid);
+  botForeignIds=botForeign.map(b=>b.mid);
+  document.getElementById('bot-cloud-count').textContent=botCloudIds.length.toLocaleString();
+  document.getElementById('bot-foreign-count').textContent=botForeignIds.length.toLocaleString();
+  document.getElementById('bot-all-count').textContent=(botCloudIds.length+botForeignIds.length).toLocaleString();
+  // IP重複テーブル
+  document.getElementById('tb-bot-dup-ip').innerHTML=dupIPs.length===0
+    ?'<tr><td colspan="4" style="text-align:center;color:var(--dm);padding:16px">重複IPなし</td></tr>'
+    :dupIPs.map(([ip,list])=>{
+      const ids=list.map(u=>u.mid);
+      const totalSend=list.reduce((s,u)=>s+u.send,0);
+      const k='dup_'+ip.replace(/\./g,'_');memberMap[k]=ids;
+      return`<tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--rd)">${ip}</td>
+        <td style="color:var(--rd);font-weight:800;font-family:'JetBrains Mono',monospace;font-size:16px">${list.length}人</td>
+        <td class="has-ids" data-k="${k}" data-l="${ip}の全アカウント" style="color:var(--ac);text-align:left;padding-left:10px">${ids.join(', ')}</td>
+        <td>${totalSend.toLocaleString()}</td>
+      </tr>`;
+    }).join('');
+  // 純広告コード件数表示（グローバルも更新）
+  _renderPureAdCodes=new Set((localStorage.getItem('kaiun_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+  const _pcEl=document.getElementById('adcode-pure-count');
+  if(_pcEl)_pcEl.textContent=_renderPureAdCodes.size>0?`純広告コード設定済み: ${_renderPureAdCodes.size}件`:'（純広告コード未設定 → 右上「🏷 純広告コード設定」から入力）';
+  bindClicks();
+
+  document.getElementById('tb-bot-cloud').innerHTML=botTbl(botCloud);
+  document.getElementById('tb-bot-foreign').innerHTML=botTbl(botForeign);
+
+  bindClicks();
+  document.querySelectorAll('.h-num.has').forEach(s=>{if(s._b)return;s._b=true;s.addEventListener('click',()=>openModal(s.dataset.l,memberMap[s.dataset.k]||[]));});
+  buildDomainStats();
+  // スナップショット保存ボタンを有効化
+  document.getElementById('btn-save-snapshot').disabled=false;
+  renderActivityBase();
+  if(snapshotData)renderActivityDiff();
+}
+
+// ===== BOT ID COPY =====
+let botCloudIds=[],botForeignIds=[];
+function copyBotIds(type){
+  let ids=[];
+  if(type==='cloud')ids=botCloudIds;
+  else if(type==='foreign')ids=botForeignIds;
+  else ids=[...new Set([...botCloudIds,...botForeignIds])];
+  if(ids.length===0){document.getElementById('bot-copy-msg').textContent='対象者なし';return;}
+  navigator.clipboard.writeText(ids.join(',\n')).then(()=>{
+    const msg=document.getElementById('bot-copy-msg');
+    msg.textContent=ids.length+'件コピーしました';
+    setTimeout(()=>msg.textContent='',2500);
+  });
+}
+
+// ===== 活動量分析 =====
+// フィルタ状態
+let actFilter={purchase:'all', login:'all', reply:'all'};
+
+function getActivityFilteredData(){
+  return mergedData.filter(u=>{
+    // 課金フィルター
+    if(actFilter.purchase==='paid' && !u.isPurchaser) return false;
+    if(actFilter.purchase==='unpaid' && u.isPurchaser) return false;
+    // ログインフィルター
+    if(actFilter.login==='7' && u.lGap>7) return false;
+    if(actFilter.login==='3' && u.lGap>3) return false;
+    if(actFilter.login==='0' && u.lGap!==0) return false;
+    // 返信フィルター
+    if(actFilter.reply==='yes' && u.sendCnt===0) return false;
+    if(actFilter.reply==='no' && u.sendCnt>0) return false;
+    return true;
+  });
+}
+
+function updateFilterSummary(filtered, total){
+  const pLabel={'all':'全員','paid':'課金者のみ','unpaid':'未課金のみ'}[actFilter.purchase];
+  const lLabel={'all':'全員（30日）','7':'7日以内','3':'3日以内','0':'当日のみ'}[actFilter.login];
+  const rLabel={'all':'全員','yes':'返信あり','no':'返信なし'}[actFilter.reply];
+  document.getElementById('filter-summary').textContent=
+    `絞り込み結果: ${filtered}人 / ${total}人 | ${pLabel} × ${lLabel} × ${rLabel}`;
+}
+
+function renderActivityBase(){
+  if(!mergedData.length)return;
+  const thHi=parseInt(document.getElementById('pt-thresh-hi').value)||1000;
+  const data=getActivityFilteredData();
+  const totalUsers=data.length;
+  const totalAll=mergedData.length;
+  updateFilterSummary(totalUsers, totalAll);
+
+  const ptBands=[
+    [0,0,'0pt（枯渇）'],
+    [1,thHi,`1〜${thHi.toLocaleString()}pt（キャンペーン対象）`],
+    [thHi+1,5000,`${(thHi+1).toLocaleString()}〜5,000pt`],
+    [5001,20000,'5,001〜20,000pt'],
+    [20001,99999999,'20,001pt以上']
+  ];
+
+  const totalPt=data.reduce((s,u)=>s+u.curPt,0);
+  const avgPt=totalUsers?Math.round(totalPt/totalUsers):0;
+  const campIds=data.filter(u=>u.curPt<=thHi).map(u=>u.mid);
+  const camp0=data.filter(u=>u.curPt===0).map(u=>u.mid);
+  const paidCount=data.filter(u=>u.isPurchaser).length;
+  const unpaidCount=data.filter(u=>!u.isPurchaser).length;
+
+  // クリッカブルカード生成ヘルパー
+  function actCard(ids,label,color,value,sub,fontSize='26px'){
+    const k='ac_'+Math.random().toString(36).slice(2,8);
+    memberMap[k]=ids;
+    const hasIds=ids&&ids.length>0;
+    return`<div class="act-metric${hasIds?' clickable':''}" ${hasIds?`data-k="${k}" data-l="${label}"`:''}><div class="av" style="color:${color};font-size:${fontSize}">${value}</div><div class="al">${label}</div>${sub?`<div class="as">${sub}</div>`:''}</div>`;
+  }
+
+  const paidIds=data.filter(u=>u.isPurchaser).map(u=>u.mid);
+  const unpaidIds=data.filter(u=>!u.isPurchaser).map(u=>u.mid);
+
+  document.getElementById('act-pt-cards').innerHTML=
+    actCard(data.map(u=>u.mid),'対象会員','var(--tx)',totalUsers.toLocaleString(),`全${totalAll.toLocaleString()}人中`)+
+    actCard(paidIds,'課金者','var(--pp)',paidCount.toLocaleString(),pct(paidCount,totalUsers))+
+    actCard(unpaidIds,'未課金者','var(--cy)',unpaidCount.toLocaleString(),pct(unpaidCount,totalUsers))+
+    actCard(campIds,'キャンペーン対象','var(--og)',campIds.length.toLocaleString(),`${thHi.toLocaleString()}pt以下`)+
+    actCard(camp0,'ポイント枯渇（0pt）','var(--rd)',camp0.length.toLocaleString(),null)+
+    `<div class="act-metric"><div class="av" style="color:var(--dm);font-size:18px">${avgPt.toLocaleString()}</div><div class="al">平均保有ポイント</div></div>`;
+
+  // カードクリックイベント
+  document.querySelectorAll('#act-pt-cards .clickable').forEach(card=>{
+    if(card._b)return;card._b=true;
+    card.addEventListener('click',()=>openModal(card.dataset.l,memberMap[card.dataset.k]||[]));
+  });
+
+  // キャンペーン対象テーブル（課金/未課金分け）
+  const campBands=[
+    [0,0,'0pt（完全枯渇）'],
+    [1,100,'1〜100pt'],
+    [101,300,'101〜300pt'],
+    [301,500,'301〜500pt'],
+    [501,thHi,`501〜${thHi.toLocaleString()}pt`]
+  ].filter(b=>b[0]<=thHi);
+
+  document.getElementById('tb-pt-campaign').innerHTML=
+    '<tr style="background:var(--s2)"><td colspan="4" style="font-size:10px;font-weight:700;color:var(--dm);text-transform:uppercase;letter-spacing:.4px;padding:6px 14px">ポイント帯</td><td style="font-size:10px;font-weight:700;color:var(--pp);text-align:right;padding:6px 10px">課金者</td><td style="font-size:10px;font-weight:700;color:var(--cy);text-align:right;padding:6px 10px">未課金者</td><td style="font-size:10px;font-weight:700;color:var(--og);text-align:right;padding:6px 10px">合計</td><td style="font-size:10px;font-weight:700;color:var(--dm);text-align:right;padding:6px 10px">平均pt</td></tr>'+
+    campBands.map(([lo,hi,label])=>{
+      const ids=data.filter(u=>u.curPt>=lo&&u.curPt<=hi).map(u=>u.mid);
+      if(!ids.length)return'';
+      const paidIds=data.filter(u=>u.curPt>=lo&&u.curPt<=hi&&u.isPurchaser).map(u=>u.mid);
+      const unpaidIds=data.filter(u=>u.curPt>=lo&&u.curPt<=hi&&!u.isPurchaser).map(u=>u.mid);
+      const avgB=Math.round(ids.reduce((s,id)=>{const u=data.find(u=>u.mid===id);return s+(u?u.curPt:0)},0)/ids.length);
+      return`<tr>
+        <td style="font-family:'Noto Sans JP',sans-serif;font-size:11px" colspan="4">${label}</td>
+        ${cTd(paidIds,label+' 課金者','color:var(--pp)')}
+        ${cTd(unpaidIds,label+' 未課金者','color:var(--cy)')}
+        ${cTd(ids,label+' 全員','color:var(--og);font-weight:700')}
+        <td style="color:var(--dm)">${avgB.toLocaleString()}pt</td>
+      </tr>`;
+    }).join('');
+
+  // 全ポイント帯分布
+  document.getElementById('tb-pt-dist').innerHTML=ptBands.map(([lo,hi,label])=>{
+    const ids=data.filter(u=>u.curPt>=lo&&u.curPt<=hi).map(u=>u.mid);
+    const paidIds=ids.filter(id=>data.find(u=>u.mid===id&&u.isPurchaser));
+    const unpaidIds=ids.filter(id=>data.find(u=>u.mid===id&&!u.isPurchaser));
+    return`<tr>
+      <td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${label}</td>
+      ${cTd(ids,label)}<td>${pct(ids.length,totalUsers)}</td>
+      ${cTd(paidIds,label+' 課金者','color:var(--pp)')}
+      ${cTd(unpaidIds,label+' 未課金者','color:var(--cy)')}
+    </tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(data.map(u=>u.mid),'フィルター対象全員')}<td>100%</td>${cTd(data.filter(u=>u.isPurchaser).map(u=>u.mid),'課金者合計','color:var(--pp)')}${cTd(data.filter(u=>!u.isPurchaser).map(u=>u.mid),'未課金者合計','color:var(--cy)')}</tr>`;
+
+  bindClicks();
+}
+
+function refreshActivity(){
+  renderActivityBase();
+  if(snapshotData)renderActivityDiff();
+}
+
+function refreshActivity(){
+  renderActivityBase();
+  if(snapshotData)renderActivityDiff();
+}
+
+function renderActivityDiff(){
+  if(!snapshotData||!mergedData.length)return;
+  const ptPerMsg=parseInt(document.getElementById('pt-per-msg').value)||150;
+  const snap=snapshotData.data;
+  const snapTime=snapshotData.timestamp||'不明';
+  const data=getActivityFilteredData(); // フィルター適用済みデータ
+
+  document.getElementById('act-diff-section').style.display='block';
+  document.getElementById('act-no-snapshot').style.display='none';
+  document.getElementById('act-period-label').textContent=`${snapTime} → 現在（フィルター: ${data.length}人）`;
+
+  let totalDiff=0,activeCount=0,inactiveCount=0;
+  const activeIds=[],inactiveIds=[],diffByUser=[];
+  const inactiveByStatus={};
+
+  data.forEach(u=>{
+    const prevUse=snap[u.mid]||0;
+    const diff=u.totalUsePt-prevUse;
+    if(diff>0){
+      totalDiff+=diff;activeCount++;activeIds.push(u.mid);
+      diffByUser.push({mid:u.mid,diff,isToday:u.isToday,label:u.dayLabel});
+    } else {
+      inactiveCount++;inactiveIds.push(u.mid);
+      const k=u.dayLabel;
+      if(!inactiveByStatus[k])inactiveByStatus[k]={total:[],login:[]};
+      inactiveByStatus[k].total.push(u.mid);
+      if(u.isToday)inactiveByStatus[k].login.push(u.mid);
+    }
+  });
+
+  const estReplies=ptPerMsg>0?Math.round(totalDiff/ptPerMsg):0;
+  const avgDiff=activeCount?Math.round(totalDiff/activeCount):0;
+  const avgPerMsg=activeCount&&estReplies?Math.round(totalDiff/estReplies):0;
+
+  // 単価異常チェック
+  const unitAnomaly=estReplies>0&&avgPerMsg<ptPerMsg*0.7;
+
+  document.getElementById('act-warn').style.display=unitAnomaly?'block':'none';
+  if(unitAnomaly){
+    document.getElementById('act-warn').innerHTML=`<div class="warn-box">⚠️ ポイント単価異常の可能性：推定単価 ${avgPerMsg.toLocaleString()}pt／通（設定値 ${ptPerMsg}pt）<br>キャンペーン割引が適用されたままになっていないか確認してください。</div>`;
+  }
+
+  // サマリーカード
+  document.getElementById('act-diff-cards').innerHTML=
+    actCard(activeIds,'活動ユーザー','var(--gn)',activeCount.toLocaleString(),'ポイント消費あり')+
+    actCard(inactiveIds,'活動なし','var(--rd)',inactiveCount.toLocaleString(),'消費0')+
+    `<div class="act-metric"><div class="av" style="color:var(--ac);font-size:20px">${totalDiff.toLocaleString()}</div><div class="al">総消費ポイント</div><div class="as">期間内合計</div></div>`+
+    `<div class="act-metric"><div class="av" style="color:var(--cy)">${estReplies.toLocaleString()}</div><div class="al">推定返信数</div><div class="as">÷${ptPerMsg}pt／通</div></div>`+
+    `<div class="act-metric"><div class="av" style="color:var(--dm);font-size:18px">${avgDiff.toLocaleString()}</div><div class="al">活動者平均消費</div><div class="as">pt／人</div></div>`+
+    `<div class="act-metric${unitAnomaly?' alert':''}"><div class="av" style="color:${unitAnomaly?'var(--rd)':'var(--dm)'};font-size:18px">${avgPerMsg.toLocaleString()}</div><div class="al">推定単価</div><div class="as">pt／通${unitAnomaly?' ⚠️':''}</div></div>`;
+
+  // 差分カードクリックイベント
+  document.querySelectorAll('#act-diff-cards .clickable').forEach(card=>{
+    if(card._b)return;card._b=true;
+    card.addEventListener('click',()=>openModal(card.dataset.l,memberMap[card.dataset.k]||[]));
+  });
+
+  // 活動あり帯別
+  const diffBands=[[1,150,'1〜150pt（〜1通）'],[151,750,'151〜750pt（2〜5通）'],[751,1500,'751〜1,500pt（6〜10通）'],[1501,9999999,'1,501pt以上（10通+）']];
+  document.getElementById('tb-diff-active').innerHTML=diffBands.map(([lo,hi,label])=>{
+    const ids=diffByUser.filter(d=>d.diff>=lo&&d.diff<=hi).map(d=>d.mid);
+    if(!ids.length)return'';
+    const est=Math.round((ids.reduce((s,id)=>{const d=diffByUser.find(d=>d.mid===id);return s+(d?d.diff:0)},0))/ptPerMsg);
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${label}</td>${cTd(ids,label+' 活動ユーザー','color:var(--gn)')}<td style="color:var(--cy)">${est.toLocaleString()}通</td></tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(activeIds,'活動あり 全ユーザー','color:var(--gn);font-weight:700')}<td style="color:var(--cy)">${estReplies.toLocaleString()}通</td></tr>`;
+
+  // 活動なし ステータス別
+  const inactKeys=Object.keys(inactiveByStatus).sort((a,b)=>inactiveByStatus[b].total.length-inactiveByStatus[a].total.length);
+  document.getElementById('tb-diff-inactive').innerHTML=inactKeys.map(k=>{
+    const d=inactiveByStatus[k];
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${k}</td>${cTd(d.total,k+' 活動なし','color:var(--rd)')}${cTd(d.login,k+' 活動なし・今日ログイン','color:var(--og)')}</tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(inactiveIds,'活動なし 全ユーザー','color:var(--rd);font-weight:700')}<td>-</td></tr>`;
+
+  bindClicks();
+}
+
+// ===== スナップショット保存 =====
+function saveSnapshot(){
+  if(!mergedData.length){alert('先にCSVを読み込んでください');return;}
+  const ts=new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
+  const data={};
+  mergedData.forEach(u=>{data[u.mid]=u.totalUsePt;});
+  const snap={timestamp:ts,count:mergedData.length,data};
+  const json=JSON.stringify(snap,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  // ファイル名に日時を入れる
+  const d=new Date();const jst=new Date(d.getTime()+9*3600000);
+  const fname=`snapshot_${jst.toISOString().substring(0,16).replace(/[T:]/g,'-')}.json`;
+  a.href=url;a.download=fname;a.click();
+  URL.revokeObjectURL(url);
+  // ボタン表示更新
+  const btn=document.getElementById('btn-save-snapshot');
+  btn.textContent='✅ 保存完了: '+fname;
+  setTimeout(()=>{btn.textContent='💾 スナップショットを保存（日時入りJSONをダウンロード）';},3000);
+}
+
+// ===== スナップショット読み込み =====
+document.getElementById('input-snapshot').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      snapshotData=JSON.parse(ev.target.result);
+      const label=document.getElementById('act-drop-label');
+      label.textContent=`✅ 読込済: ${snapshotData.timestamp||f.name}（${snapshotData.count||'?'}人）`;
+      document.getElementById('act-drop').classList.add('loaded');
+      if(mergedData.length)renderActivityDiff();
+    }catch(err){alert('JSON読込エラー: '+err.message);}
+  };
+  r.readAsText(f);
+});
+
+// スナップショットのドラッグ&ドロップ
+const actDrop=document.getElementById('act-drop');
+actDrop.addEventListener('dragover',e=>{e.preventDefault();actDrop.classList.add('dragover')});
+actDrop.addEventListener('dragleave',()=>actDrop.classList.remove('dragover'));
+actDrop.addEventListener('drop',e=>{
+  e.preventDefault();actDrop.classList.remove('dragover');
+  const f=e.dataTransfer.files[0];if(!f)return;
+  const inp=document.getElementById('input-snapshot');
+  const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;
+  inp.dispatchEvent(new Event('change'));
+});
+
+
+// ===== ドメイン集計 =====
+let domainStats={yahoo:[],hotmail:[],other:[]};
+
+function buildDomainStats(){
+  const YAHOO_DOMAINS=new Set(['yahoo.co.jp','yahoo.ne.jp','ymail.ne.jp','yahoo.com']);
+  const HOTMAIL_DOMAINS=new Set(['hotmail.com','hotmail.co.jp','outlook.com','outlook.jp','live.com','live.jp','msn.com','windowslive.com']);
+  const CARRIER_DOMAINS=new Set(['docomo.ne.jp','ezweb.ne.jp','au.com','icloud.com','me.com','mac.com','gmail.com','softbank.ne.jp','i.softbank.jp','ymobile.ne.jp','ymobile1.ne.jp','uqmobile.jp']);
+
+  const yahooCnt={},hotmailCnt={},otherCnt={};
+  mergedData.forEach(u=>{
+    const email=u.email;
+    if(!email||!email.includes('@'))return;
+    const d=email.split('@')[1].toLowerCase();
+    if(YAHOO_DOMAINS.has(d)){yahooCnt[d]=(yahooCnt[d]||0)+1;}
+    else if(HOTMAIL_DOMAINS.has(d)){hotmailCnt[d]=(hotmailCnt[d]||0)+1;}
+    else if(!CARRIER_DOMAINS.has(d)&&!d.endsWith('.vodafone.ne.jp')){otherCnt[d]=(otherCnt[d]||0)+1;}
+  });
+
+  const toSorted=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  domainStats.yahoo=toSorted(yahooCnt);
+  domainStats.hotmail=toSorted(hotmailCnt);
+  domainStats.other=toSorted(otherCnt);
+
+  const render=(elId,list)=>{
+    const el=document.getElementById(elId);
+    if(!el)return;
+    if(!list.length){el.textContent='（なし）';return;}
+    el.innerHTML=list.map(([d,c])=>`<div style="display:flex;justify-content:space-between;gap:12px"><span>${d}</span><span style="color:var(--dm);font-size:11px">${c}件</span></div>`).join('');
+  };
+  render('domain-yahoo',domainStats.yahoo);
+  render('domain-hotmail',domainStats.hotmail);
+  render('domain-other',domainStats.other.slice(0,20));
+}
+
+function copyDomains(type){
+  const list=domainStats[type]||[];
+  if(!list.length){alert('ドメインなし');return;}
+  const text=list.map(([d])=>d).join('\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    // 簡易トースト
+    const div=document.createElement('div');
+    div.textContent=`✅ ${list.length}件のドメインをコピーしました`;
+    div.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gn);color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999';
+    document.body.appendChild(div);
+    setTimeout(()=>div.remove(),2000);
+  });
+}
+
+
+// ===== 配信管理 =====
+// キャリア別PC判定（iCloud/ymobile/uqmobile以外のメールアドレス）
+function isPC(email){
+  if(!email||!email.includes('@'))return false;
+  const d=email.split('@')[1].toLowerCase();
+  // PC = docomo/softbank/au/iCloud/ymobile/uq 以外
+  const carrierDomains=['docomo.ne.jp','softbank.ne.jp','i.softbank.jp','ezweb.ne.jp','au.com','icloud.com','me.com','mac.com','ymobile.ne.jp','ymobile1.ne.jp','uqmobile.jp'];
+  return !carrierDomains.some(cd=>d===cd||d.endsWith('.vodafone.ne.jp'));
+}
+
+function getDeliveryCarrier(email){
+  if(!email||!email.includes('@'))return 'Gmail';
+  const d=email.split('@')[1].toLowerCase();
+  if(['i.softbank.jp','softbank.ne.jp'].includes(d)||d.endsWith('.vodafone.ne.jp'))return 'SoftBank';
+  if(d==='docomo.ne.jp')return 'docomo';
+  if(d==='ezweb.ne.jp'||d==='au.com')return 'au';
+  if(['icloud.com','me.com','mac.com'].includes(d))return 'iCloud';
+  if(d==='gmail.com')return 'Gmail';
+  if(d==='yahoo.co.jp')return 'Yahoo';
+  if(['hotmail.com','hotmail.co.jp','outlook.com','outlook.jp','live.com','live.jp','msn.com'].includes(d))return 'Hotmail';
+  return 'Gmail'; // その他PCメール
+}
+
+const DELIVERY_CARRIERS=['docomo','iCloud','au','Gmail','Yahoo','Hotmail','SoftBank'];
+const DELIVERY_INPUT_IDS={
+  'docomo':'del-docomo','iCloud':'del-icloud','au':'del-au',
+  'Gmail':'del-gmail','Yahoo':'del-yahoo','Hotmail':'del-hotmail','SoftBank':'del-softbank'
+};
+const CARRIER_BADGE_CLASS={
+  'docomo':'c-dc','iCloud':'c-ic','au':'c-au',
+  'Gmail':'c-gm','Yahoo':'c-ot','Hotmail':'c-ht','SoftBank':'c-sb'
+};
+
+function renderDelivery(){
+  if(!mergedData.length){alert('先にCSVとExcelを読み込んでください');return;}
+
+  // 0日目（初回ログイン）のユーザーのみ対象
+  const firstLoginUsers=mergedData.filter(u=>u.dayLabel==='登録0日目');
+
+  const delCounts={
+    'docomo': parseInt(document.getElementById('del-docomo')?.value)||0,
+    'iCloud': parseInt(document.getElementById('del-icloud')?.value)||0,
+    'au':     parseInt(document.getElementById('del-au')?.value)||0,
+    'Gmail':  parseInt(document.getElementById('del-gmail')?.value)||0,
+    'Yahoo':  parseInt(document.getElementById('del-yahoo')?.value)||0,
+    'Hotmail':parseInt(document.getElementById('del-hotmail')?.value)||0,
+    'SoftBank':parseInt(document.getElementById('del-softbank')?.value)||0
+  };
+  const totalDel=Object.values(delCounts).reduce((s,v)=>s+v,0);
+
+  // キャリア別集計（0日目のみ）
+  const stats={};
+  DELIVERY_CARRIERS.forEach(c=>{
+    stats[c]={fl:[],r1:[],r2:[],r3:[],r4:[],r5:[],r6:[],r7p:[],bot:[],realLogin:[]};
+  });
+
+  firstLoginUsers.forEach(u=>{
+    const c=getDeliveryCarrier(u.email);
+    if(!stats[c])return;
+    stats[c].fl.push(u.mid);
+    // 返信回数別（Excelの送信数=ユーザーからの返信数）
+    if(u.sendCnt===1)stats[c].r1.push(u.mid);
+    else if(u.sendCnt===2)stats[c].r2.push(u.mid);
+    else if(u.sendCnt===3)stats[c].r3.push(u.mid);
+    else if(u.sendCnt===4)stats[c].r4.push(u.mid);
+    else if(u.sendCnt===5)stats[c].r5.push(u.mid);
+    else if(u.sendCnt===6)stats[c].r6.push(u.mid);
+    else if(u.sendCnt>=7)stats[c].r7p.push(u.mid);
+    if(u.ipClass==='cloud'||u.ipClass==='foreign')stats[c].bot.push(u.mid);
+    else stats[c].realLogin.push(u.mid);
+  });
+
+  const rows=DELIVERY_CARRIERS.map(c=>{
+    const s=stats[c];
+    const del=delCounts[c];
+    const fl=s.fl.length,bt=s.bot.length,rl=s.realLogin.length;
+    const re=(s.r1.length+s.r2.length+s.r3.length+s.r4.length+s.r5.length+s.r6.length+s.r7p.length);
+    if(fl===0&&del===0)return'';
+    const badge=`<span class="carrier-badge ${CARRIER_BADGE_CLASS[c]||'c-ot'}">${c}</span>`;
+    const btRate=pctN(bt,fl);
+    function rCell(ids,n){return ids.length>0?cTd(ids,`初回ログイン 返信${n}：`+c,'color:var(--gn)'):`<td style="color:var(--dm)">-</td>`;}
+    return`<tr>
+      <td>${badge}</td>
+      <td style="font-weight:700;color:var(--ac)">${del>0?del.toLocaleString():'-'}</td>
+      ${cTd(s.fl,'初回ログイン（0日目）：'+c,'color:var(--gn);font-weight:700')}
+      <td class="${rc(del>0?pctN(fl,del):0)}">${del>0?pct(fl,del):'-'}</td>
+      ${rCell(s.r1,'1')}
+      ${rCell(s.r2,'2')}
+      ${rCell(s.r3,'3')}
+      ${rCell(s.r4,'4')}
+      ${rCell(s.r5,'5')}
+      ${rCell(s.r6,'6')}
+      ${s.r7p.length>0?cTd(s.r7p,'初回ログイン 返信7以上：'+c,'color:var(--pp);font-weight:700'):`<td style="color:var(--dm)">-</td>`}
+      ${cTd(s.bot,'初回ログイン・ボット疑い：'+c,'color:var(--rd)')}
+      <td style="color:${btRate>=50?'var(--rd)':btRate>=30?'var(--og)':'var(--dm)'}">${pct(bt,fl)}</td>
+      ${cTd(s.realLogin,'実質反応（ボット除く）：'+c,'color:var(--gn)')}
+      <td class="${rc(del>0?pctN(rl,del):pctN(rl,fl))}">${del>0?pct(rl,del):pct(rl,fl)}</td>
+    </tr>`;
+  }).filter(Boolean);
+
+  // 合計
+  const allFl=firstLoginUsers.map(u=>u.mid);
+  const allReply=firstLoginUsers.filter(u=>u.sendCnt>0).map(u=>u.mid);
+  const allBot=firstLoginUsers.filter(u=>u.ipClass==='cloud'||u.ipClass==='foreign').map(u=>u.mid);
+  const allReal=firstLoginUsers.filter(u=>u.ipClass!=='cloud'&&u.ipClass!=='foreign').map(u=>u.mid);
+  const fl=allFl.length,rl=allReal.length;
+
+  // 合計行の返信回数
+  const allR1=firstLoginUsers.filter(u=>u.sendCnt===1).map(u=>u.mid);
+  const allR2=firstLoginUsers.filter(u=>u.sendCnt===2).map(u=>u.mid);
+  const allR3=firstLoginUsers.filter(u=>u.sendCnt===3).map(u=>u.mid);
+  const allR4=firstLoginUsers.filter(u=>u.sendCnt===4).map(u=>u.mid);
+  const allR5=firstLoginUsers.filter(u=>u.sendCnt===5).map(u=>u.mid);
+  const allR6=firstLoginUsers.filter(u=>u.sendCnt===6).map(u=>u.mid);
+  const allR7p=firstLoginUsers.filter(u=>u.sendCnt>=7).map(u=>u.mid);
+  function totRCell(ids){return ids.length>0?cTd(ids,'合計 返信','color:var(--gn)'):`<td style="color:var(--dm)">-</td>`;}
+  rows.push(`<tr class="tot-row">
+    <td style="font-family:'Noto Sans JP',sans-serif">合計</td>
+    <td style="color:var(--ac)">${totalDel>0?totalDel.toLocaleString():'-'}</td>
+    ${cTd(allFl,'初回ログイン全体','color:var(--gn);font-weight:700')}
+    <td class="${rc(totalDel>0?pctN(fl,totalDel):0)}">${totalDel>0?pct(fl,totalDel):'-'}</td>
+    ${totRCell(allR1)}${totRCell(allR2)}${totRCell(allR3)}${totRCell(allR4)}${totRCell(allR5)}${totRCell(allR6)}
+    ${allR7p.length>0?cTd(allR7p,'合計 返信7+','color:var(--pp);font-weight:700'):`<td style="color:var(--dm)">-</td>`}
+    ${cTd(allBot,'初回ログイン・ボット疑い全体','color:var(--rd)')}<td style="color:var(--rd)">${pct(allBot.length,fl)}</td>
+    ${cTd(allReal,'実質反応全体','color:var(--gn)')}<td class="${rc(totalDel>0?pctN(rl,totalDel):0)}">${totalDel>0?pct(rl,totalDel):'-'}</td>
+  </tr>`);
+
+  document.getElementById('tb-delivery').innerHTML=rows.join('');
+
+  // 0日目が0人の場合のメッセージ
+  if(allFl.length===0){
+    document.getElementById('tb-delivery').innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--dm);padding:24px">本日の初回ログイン（0日目）が0件です。CSVに今日の登録者がいないか、対象日を確認してください。</td></tr>';
+  }
+
+  // ===== 返信回数分布 =====
+  const replyBands=[
+    [0,0,'返信0（ログインのみ）'],
+    [1,1,'返信1回'],
+    [2,2,'返信2回'],
+    [3,3,'返信3回'],
+    [4,4,'返信4回'],
+    [5,5,'返信5回'],
+    [6,6,'返信6回'],
+    [7,99999,'返信7回以上']
+  ];
+  const flTotal=firstLoginUsers.length||1;
+
+  document.getElementById('tb-delivery-reply').innerHTML=replyBands.map(([lo,hi,label])=>{
+    const ids=firstLoginUsers.filter(u=>u.sendCnt>=lo&&u.sendCnt<=hi).map(u=>u.mid);
+    if(!ids.length)return'';
+    const botIds=ids.filter(id=>{const u=firstLoginUsers.find(u=>u.mid===id);return u&&(u.ipClass==='cloud'||u.ipClass==='foreign');});
+    const realIds=ids.filter(id=>!botIds.includes(id));
+    return`<tr>
+      <td style="font-family:'Noto Sans JP',sans-serif">${label}</td>
+      ${cTd(ids,label+' 全員')}
+      <td class="${rc(pctN(ids.length,flTotal))}">${pct(ids.length,flTotal)}</td>
+      ${cTd(botIds,label+' ボット疑い','color:var(--rd)')}
+      ${cTd(realIds,label+' 実質（ボット除く）','color:var(--gn)')}
+    </tr>`;
+  }).join('')+`<tr class="tot-row">
+    <td style="font-family:'Noto Sans JP',sans-serif">合計（0日目）</td>
+    ${cTd(allFl,'初回ログイン全体')}
+    <td>100%</td>
+    ${cTd(allBot,'ボット疑い全体','color:var(--rd)')}
+    ${cTd(allReal,'実質全体','color:var(--gn)')}
+  </tr>`;
+
+  // キャリア別返信分布
+  document.getElementById('tb-delivery-reply-carrier').innerHTML=DELIVERY_CARRIERS.map(c=>{
+    const s=stats[c];
+    if(!s.fl.length)return'';
+    const fl=s.fl.length;
+    const r0=s.fl.filter(id=>{const u=firstLoginUsers.find(u=>u.mid===id);return u&&u.sendCnt===0;});
+    const r1p=s.fl.filter(id=>{const u=firstLoginUsers.find(u=>u.mid===id);return u&&u.sendCnt>=1;});
+    const r3p=s.fl.filter(id=>{const u=firstLoginUsers.find(u=>u.mid===id);return u&&u.sendCnt>=3;});
+    const r7p=s.fl.filter(id=>{const u=firstLoginUsers.find(u=>u.mid===id);return u&&u.sendCnt>=7;});
+    const badge=`<span class="carrier-badge ${CARRIER_BADGE_CLASS[c]||'c-ot'}">${c}</span>`;
+    return`<tr>
+      <td>${badge}</td>
+      ${cTd(s.fl,'初回ログイン：'+c)}
+      ${cTd(r0,'返信0：'+c,'color:var(--rd)')}
+      <td class="${r0.length===fl?'rl':''}">${pct(r0.length,fl)}</td>
+      ${cTd(r1p,'返信1以上：'+c,'color:var(--og)')}
+      <td class="${rc(pctN(r1p.length,fl))}">${pct(r1p.length,fl)}</td>
+      ${cTd(r3p,'返信3以上：'+c,'color:var(--cy)')}
+      <td class="${rc(pctN(r3p.length,fl))}">${pct(r3p.length,fl)}</td>
+      ${cTd(r7p,'返信7以上：'+c,'color:var(--gn);font-weight:700')}
+      <td class="${rc(pctN(r7p.length,fl))}">${pct(r7p.length,fl)}</td>
+    </tr>`;
+  }).filter(Boolean).join('');
+
+  bindClicks();
+}
+
+
+function renderAdCode(sortCol,dir){
+  if(!adcodeStore)return;
+  // 純広告コードセット（この関数内で一度だけ生成）
+  _renderPureAdCodes=new Set((localStorage.getItem('kaiun_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+  const keys=Object.keys(adcodeStore);
+  const aT={total:[],login:[],s7p:[],pur:[],amount:0};
+  keys.forEach(k=>{const d=adcodeStore[k];aT.total.push(...d.total);aT.login.push(...d.login);aT.s7p.push(...d.s7p);aT.pur.push(...d.pur);aT.amount+=d.amount;});
+  const sorted=[...keys].sort((a,b)=>{
+    const da=adcodeStore[a],db=adcodeStore[b];
+    if(sortCol==='name')return dir==='asc'?a.localeCompare(b):b.localeCompare(a);
+    let va,vb;
+    if(sortCol==='t'){va=da.total.length;vb=db.total.length;}
+    else if(sortCol==='lo'){va=da.login.length;vb=db.login.length;}
+    else if(sortCol==='lo_r'){va=da.total.length?da.login.length/da.total.length:0;vb=db.total.length?db.login.length/db.total.length:0;}
+    else if(sortCol==='s7p'){va=da.s7p.length;vb=db.s7p.length;}
+    else if(sortCol==='s7p_r'){va=da.total.length?da.s7p.length/da.total.length:0;vb=db.total.length?db.s7p.length/db.total.length:0;}
+    else if(sortCol==='pu'){va=da.pur.length;vb=db.pur.length;}
+    else if(sortCol==='pu_r'){va=da.total.length?da.pur.length/da.total.length:0;vb=db.total.length?db.pur.length/db.total.length:0;}
+    else if(sortCol==='rev'){va=da.amount;vb=db.amount;}
+    else if(sortCol==='arpu'){va=da.total.length?da.amount/da.total.length:0;vb=db.total.length?db.amount/db.total.length:0;}
+    else{va=da.total.length;vb=db.total.length;}
+    return dir==='asc'?va-vb:vb-va;
+  });
+  const at=aT.total.length;
+  document.getElementById('tb-adcode').innerHTML=sorted.map(k=>{
+    const d=adcodeStore[k];const t=d.total.length;
+    const arpu=t>0?'¥'+Math.round(d.amount/t).toLocaleString():'-';
+    const isAdCode=_renderPureAdCodes.size>0&&_renderPureAdCodes.has(k);
+    const rowBg=isAdCode?'background:rgba(240,170,64,.04)':'';
+    const adBadge=isAdCode?`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(240,170,64,.15);color:var(--og);margin-left:4px;vertical-align:middle">AD</span>`:
+      `<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,204,224,.1);color:var(--cy);margin-left:4px;vertical-align:middle">CSV</span>`;
+    return`<tr style="${rowBg}"><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;font-family:'Noto Sans JP',sans-serif"title="${k}">${k}${adBadge}</td>${cTd(d.total,'在籍：'+k)}${cTd(d.login,'ログイン：'+k)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>${cTd(d.s7p,'7通以上返信：'+k,'color:var(--gn)')}<td class="${rc(pctN(d.s7p.length,t))}">${pct(d.s7p.length,t)}</td>${cTd(d.pur,'課金者：'+k,'color:var(--pp)')}<td class="${rc(pctN(d.pur.length,t))}">${pct(d.pur.length,t)}</td><td style="color:${d.amount>0?'var(--og)':'var(--dm)'};font-weight:${d.amount>0?700:400}">${yen(d.amount)}</td><td style="color:var(--dm)">${arpu}</td></tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(aT.total,'全在籍')}${cTd(aT.login,'全ログイン')}<td>-</td>${cTd(aT.s7p,'7通以上返信合計','color:var(--gn)')}<td>-</td>${cTd(aT.pur,'全課金者','color:var(--pp)')}<td>-</td><td style="color:var(--og);font-weight:700">¥${Math.round(aT.amount).toLocaleString()}</td><td>-</td></tr>`;
+  bindClicks();
+}
+
+// ===== FILE HANDLING =====
+let csvRaw=null,xlsxRaw=null,mergedData=[];
+let _renderPureAdCodes=new Set();
+let _currentTargetDate=new Date();
+let _userMap={};
+function isAdUser(u){
+  if(!u)return false;
+  const obj=typeof u==='string'?_userMap[u]:u;
+  return _renderPureAdCodes.size>0&&obj&&_renderPureAdCodes.has(obj.adCode);
+}
+let snapshotData=null; // 前回スナップショット
+
+document.getElementById('input-csv').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  document.getElementById('csv-status').textContent='読込中...';
+  const r=new FileReader();
+  r.onload=ev=>{
+    const u8=new Uint8Array(ev.target.result);
+    let text;try{text=new TextDecoder('cp932').decode(u8);if(text.includes('\uFFFD'))throw 0;}
+    catch(e){text=new TextDecoder('utf-8').decode(u8);}
+    csvRaw=parseCSV(text);
+    document.getElementById('csv-status').textContent=`✓ ${csvRaw.length}行`;
+    document.getElementById('box-csv').classList.add('loaded');checkReady();
+  };r.readAsArrayBuffer(f);
+});
+
+document.getElementById('input-xlsx').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(typeof XLSX==='undefined'){alert('SheetJSライブラリが未読込');return;}
+  document.getElementById('xlsx-status').textContent='読込中...';
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true,codepage:932});
+      xlsxRaw=parseXlsx(wb);
+      document.getElementById('xlsx-status').textContent=`✓ ${Object.keys(xlsxRaw).length}人`;
+      document.getElementById('box-xlsx').classList.add('loaded');checkReady();
+    }catch(err){alert('Excel読込エラー: '+err.message);document.getElementById('xlsx-status').textContent='エラー';}
+  };r.readAsArrayBuffer(f);
+});
+
+function checkReady(){document.getElementById('start-btn').classList.toggle('show',!!(csvRaw&&xlsxRaw));}
+
+function startAnalysis(){
+  mergedData=mergeData(csvRaw,xlsxRaw);
+  // 最新ログイン日を自動検出して対象日にセット
+  const allLastDays=mergedData.map(u=>u.lastDay).filter(d=>d&&d.length===10).sort();
+  const autoDate=allLastDays.length>0?allLastDays[allLastDays.length-1]:todayStr();
+  if(autoDate!==todayStr()){
+    // 前日以前のデータなら自動で日付をセット
+    const [ay,am,ad]=autoDate.split('-').map(Number);
+    _currentTargetDate=new Date(Date.UTC(ay,am-1,ad));
+    document.getElementById('target-date').value=autoDate;
+  } else {
+    _currentTargetDate=new Date();
+    document.getElementById('target-date').value=todayStr();
+  }
+  const today=autoDate;
+  const matched=mergedData.filter(u=>xlsxRaw[u.mid]).length;
+  const loginToday=mergedData.filter(u=>u.lastDay===today).length;
+  document.getElementById('debug-info').innerHTML=`<strong>CSV:</strong> ${csvRaw.length}行 | <strong>Excel:</strong> ${Object.keys(xlsxRaw).length}人 | <strong>ID一致:</strong> ${matched} | <strong>対象日:</strong> ${today}${today!==todayStr()?'<span style="color:var(--og)"> ← 自動検出（前日データ）</span>':''} | <strong>今日ログイン:</strong> ${loginToday}`;
+  document.getElementById('load-time').textContent=new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
+  document.getElementById('drop-zone').classList.add('hidden');
+  document.getElementById('dashboard').classList.add('active');
+  // 表示切り替えフィルターを適用してanalyze
+  _currentSegFilter = 'all'; // 読み込み時は全体表示にリセット
+  const _banner=document.getElementById('filter-banner');if(_banner)_banner.style.display='none';
+  document.querySelectorAll('.seg-toggle-btn').forEach(b => {
+    if(b.dataset.seg === 'all') {
+      b.style.background='var(--ac)';b.style.color='#fff';b.style.borderColor='var(--ac)';
+    } else {
+      b.style.background='var(--s2)';b.style.color='var(--dm)';b.style.borderColor='var(--bd)';
+    }
+  });
+  const segLabel=document.getElementById('seg-filter-label');
+  if(segLabel)segLabel.textContent=`（${mergedData.length}人）`;
+  render(analyze(getFilteredData()));
+  ['btn-save-noon','btn-save-night'].forEach(id=>{
+    const b=document.getElementById(id);if(b)b.disabled=false;
+  });
+}
+
+// ===== フィルタートグル =====
+['filter-purchase','filter-login','filter-reply'].forEach(id=>{
+  const grp=document.getElementById(id);
+  if(!grp)return;
+  grp.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      grp.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const key=id.replace('filter-','');
+      actFilter[key]=btn.dataset.val;
+      refreshActivity();
+    });
+  });
+});
+
+// DRAG DROP
+function setupDrop(boxId,inputId){
+  const box=document.getElementById(boxId);
+  box.addEventListener('dragover',e=>{e.preventDefault();box.classList.add('dragover')});
+  box.addEventListener('dragleave',()=>box.classList.remove('dragover'));
+  box.addEventListener('drop',e=>{e.preventDefault();box.classList.remove('dragover');const f=e.dataTransfer.files[0];if(!f)return;const inp=document.getElementById(inputId);const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change'));});
+}
+setupDrop('box-csv','input-csv');setupDrop('box-xlsx','input-xlsx');
+const dz=document.getElementById('drop-zone');
+dz.addEventListener('dragover',e=>e.preventDefault());
+dz.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;const n=f.name.toLowerCase();const id=n.includes('.csv')?'input-csv':(n.includes('.xlsx')||n.includes('.xls'))?'input-xlsx':null;if(!id){alert('CSVまたはExcelをドロップしてください');return;}const inp=document.getElementById(id);const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change'));});
+
+// TABS
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tc').forEach(c=>c.classList.remove('active'));
+    tab.classList.add('active');document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+    bindClicks();
+  });
+});
+
+// ===== 今日の記録を保存（推移トラッカー用） =====
+function saveDailyLog(timeSlot='night'){
+  if(!mergedData||!mergedData.length){alert('先にCSVとExcelを読み込んでください');return;}
+  const today=todayStr();
+  // 純広告コードをlocalStorageから取得
+  const pureAdCodes=new Set((localStorage.getItem('kaiun_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+
+  const loginUsers=mergedData.filter(u=>u.isToday);
+  const replyUsers=mergedData.filter(u=>u.isToday&&u.sendCnt>0);
+
+  // セグメント分け
+  const seg=u=>{
+    const isNew=u.dayLabel==='登録0日目';
+    const isPaid=u.isPurchaser;
+    const isAd=pureAdCodes.size>0&&pureAdCodes.has(u.adCode);
+    const src=isAd?'ad':'csv';
+    if(isNew)return{type:'new',src};
+    if(isPaid)return{type:'paid',src};
+    return{type:'unpaid',src};
+  };
+
+  const segs={
+    new_ad:[],new_csv:[],
+    paid_ad:[],paid_csv:[],
+    unpaid_ad:[],unpaid_csv:[]
+  };
+  loginUsers.forEach(u=>{
+    const s=seg(u);
+    const key=s.type+'_'+s.src;
+    if(segs[key])segs[key].push(u.mid);
+  });
+  const replySegs={new_ad:[],new_csv:[],paid_ad:[],paid_csv:[],unpaid_ad:[],unpaid_csv:[]};
+  replyUsers.forEach(u=>{
+    const s=seg(u);
+    const key=s.type+'_'+s.src;
+    if(replySegs[key])replySegs[key].push(u.mid);
+  });
+
+  const log={
+    date:today,
+    // 合計
+    login:loginUsers.length,
+    reply:replyUsers.length,
+    total:mergedData.length,
+    // セグメント別ログイン
+    login_new:segs.new_ad.length+segs.new_csv.length,
+    login_paid:segs.paid_ad.length+segs.paid_csv.length,
+    login_unpaid:segs.unpaid_ad.length+segs.unpaid_csv.length,
+    login_ad:segs.new_ad.length+segs.paid_ad.length+segs.unpaid_ad.length,
+    login_csv:segs.new_csv.length+segs.paid_csv.length+segs.unpaid_csv.length,
+    // セグメント別返信
+    reply_new:replySegs.new_ad.length+replySegs.new_csv.length,
+    reply_paid:replySegs.paid_ad.length+replySegs.paid_csv.length,
+    reply_unpaid:replySegs.unpaid_ad.length+replySegs.unpaid_csv.length,
+    // IDリスト（ユニーク計算用）
+    loginIds:loginUsers.map(u=>u.mid),
+    replyIds:replyUsers.map(u=>u.mid),
+    loginIds_new:segs.new_ad.concat(segs.new_csv),
+    loginIds_paid:segs.paid_ad.concat(segs.paid_csv),
+    loginIds_unpaid:segs.unpaid_ad.concat(segs.unpaid_csv),
+    pureAdCodes:[...pureAdCodes],
+    timeSlot,  // 'noon'=12時 / 'night'=21時
+    savedAt:new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})
+  };
+  const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const slotLabel=timeSlot==='noon'?'_1200':'_2100';
+  a.href=url;a.download=`log_${today}${slotLabel}.json`;a.click();
+  URL.revokeObjectURL(url);
+  const btnId=timeSlot==='noon'?'btn-save-noon':'btn-save-night';
+  const btn=document.getElementById(btnId);
+  if(btn){
+    const orig=btn.textContent;
+    btn.textContent='✅ 保存完了';
+    setTimeout(()=>{btn.textContent=orig;},2500);
+  }
+}
+
+// ===== 純広告コード設定 =====
+function openAdCodeModal(){
+  const saved=localStorage.getItem('kaiun_pure_ad_codes')||'';
+  document.getElementById('adcode-input').value=saved;
+  document.getElementById('adcode-modal').style.display='flex';
+}
+function closeAdCodeModal(){document.getElementById('adcode-modal').style.display='none';}
+function saveAdCodes(){
+  const val=document.getElementById('adcode-input').value.trim();
+  localStorage.setItem('kaiun_pure_ad_codes',val);
+  const cnt=val.split('\n').filter(s=>s.trim()).length;
+  closeAdCodeModal();
+  // データ読込済みなら mergeData から再実行（dayLabelを純広告基準で再計算）
+  if(csvRaw&&xlsxRaw){
+    mergedData=mergeData(csvRaw,xlsxRaw); // dayLabel再計算
+    render(analyze(getFilteredData()));
+    ['btn-save-noon','btn-save-night'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+  }
+  const msg=cnt>0?`純広告コードを${cnt}件保存しました。再集計しました。`:'クリアしました。再集計しました。';
+  // alertの代わりにインライン通知（alertはブロッキングなので使わない）
+  const notif=document.createElement('div');
+  notif.textContent=msg;
+  notif.style.cssText='position:fixed;bottom:20px;right:20px;background:#1e2233;border:1px solid #2dd4a0;color:#2dd4a0;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;z-index:9999;transition:opacity .4s';
+  document.body.appendChild(notif);
+  setTimeout(()=>{notif.style.opacity='0';setTimeout(()=>notif.remove(),400);},2500);
+}
+document.getElementById('adcode-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAdCodeModal();});
+
+
+// ===== データ表示切り替え =====
+let _currentSegFilter = 'all';
+
+function setSegFilter(seg, btn) {
+  _currentSegFilter = seg;
+  // ボタンのスタイル切り替え
+  document.querySelectorAll('.seg-toggle-btn').forEach(b => {
+    if(b.dataset.seg === seg) {
+      b.style.background = seg==='ad' ? 'var(--og)' : seg==='csv' ? 'var(--cy)' : 'var(--ac)';
+      b.style.color = (seg==='csv'||seg==='ad') ? '#0c0e17' : '#fff';
+      b.style.borderColor = seg==='ad' ? 'var(--og)' : seg==='csv' ? 'var(--cy)' : 'var(--ac)';
+    } else {
+      b.style.background = 'var(--s2)';
+      b.style.color = 'var(--dm)';
+      b.style.borderColor = 'var(--bd)';
+    }
+  });
+
+  // フィルター適用してanalyze
+  if(!mergedData || !mergedData.length) return;
+  const filtered = getFilteredData();
+  const label = document.getElementById('seg-filter-label');
+  if(label) label.textContent = `（${filtered.length}人）`;
+
+  // フィルターバナー表示
+  const banner = document.getElementById('filter-banner');
+  if(banner){
+    if(seg === 'all'){
+      banner.style.display = 'none';
+    } else if(seg === 'ad'){
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(240,170,64,.15)';
+      banner.style.border = '1px solid rgba(240,170,64,.4)';
+      banner.style.color = 'var(--og)';
+      banner.textContent = `🟠 純広告フィルター適用中 — ${filtered.length}人のデータを表示（全体: ${mergedData.length}人）`;
+    } else {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(34,204,224,.1)';
+      banner.style.border = '1px solid rgba(34,204,224,.3)';
+      banner.style.color = 'var(--cy)';
+      banner.textContent = `🔵 CSV系フィルター適用中 — ${filtered.length}人のデータを表示（全体: ${mergedData.length}人）`;
+    }
+  }
+  render(analyze(filtered));
+  ['btn-save-noon','btn-save-night'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+}
+
+function getFilteredData() {
+  if(!mergedData) return [];
+  if(_currentSegFilter === 'all') return mergedData;
+  const pureAdCodes = new Set(
+    (localStorage.getItem('kaiun_pure_ad_codes') || '')
+      .split('\n').map(s => s.trim()).filter(Boolean)
+  );
+  if(_currentSegFilter === 'ad') {
+    return mergedData.filter(u => pureAdCodes.has(u.adCode));
+  }
+  // csv: 純広告以外
+  return mergedData.filter(u => !pureAdCodes.has(u.adCode));
+}
+
+
+function reAnalyze(){
+  if(!mergedData||!mergedData.length)return;
+  const v=document.getElementById('target-date').value;
+  if(!v)return;
+  const[y,m,d]=v.split('-').map(Number);
+  _currentTargetDate=new Date(Date.UTC(y,m-1,d));
+  mergedData=mergeData(csvRaw,xlsxRaw);
+  render(analyze(getFilteredData()));
+}
+function setToday(){
+  const v=todayStr();
+  document.getElementById('target-date').value=v;
+  const[y,m,d]=v.split('-').map(Number);
+  _currentTargetDate=new Date(Date.UTC(y,m-1,d));
+  mergedData=mergeData(csvRaw,xlsxRaw);
+  render(analyze(getFilteredData()));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>サイト分析ダッシュボード v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{--bg:#0f1117;--s1:#1a1d27;--s2:#232734;--bd:#2e3346;--tx:#e4e6ef;--dm:#8b90a5;--ac:#6c8aff;--gn:#34d399;--rd:#f87171;--og:#fbbf24;--pp:#a78bfa;--cy:#22d3ee;--gn-bg:rgba(52,211,153,0.1);--rd-bg:rgba(248,113,113,0.1);--og-bg:rgba(251,191,36,0.1);--pp-bg:rgba(167,139,250,0.1)}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+#drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:40px}
+#drop-zone.hidden{display:none}#drop-zone h1{font-size:26px;font-weight:800;margin-bottom:10px}
+#drop-zone p{color:var(--dm);font-size:14px;margin-bottom:24px}
+.drop-area{width:100%;max-width:480px;border:2px dashed var(--bd);border-radius:16px;padding:56px 36px;text-align:center;cursor:pointer;transition:all .2s}
+.drop-area:hover,.drop-area.dragover{border-color:var(--ac);background:rgba(108,138,255,0.06)}
+.drop-area .icon{font-size:44px;margin-bottom:14px}.drop-area .label{font-size:15px;font-weight:600}
+.drop-area .sub{font-size:12px;color:var(--dm);margin-top:8px}
+#file-input{display:none}
+#dashboard{display:none;padding:24px;max-width:1500px;margin:0 auto}#dashboard.active{display:block}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.header h1{font-size:20px;font-weight:800}.header-meta{display:flex;gap:16px;align-items:center;font-size:13px;color:var(--dm)}
+.header-meta .mono{color:var(--ac);font-family:'JetBrains Mono',monospace}
+.btn{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:var(--ac);background:rgba(108,138,255,0.08)}
+.btn-p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.date-bar{display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.date-bar label{font-size:13px;color:var(--dm)}
+.date-bar input[type="date"]{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:6px 12px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:13px}
+.summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:24px}
+.sc{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px}
+.sc .l{font-size:11px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sc .v{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace}.sc .sb{font-size:11px;color:var(--dm);margin-top:2px}
+.tabs{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--bd);overflow-x:auto}
+.tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--tx)}.tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tc{display:none}.tc.active{display:block}
+.section{margin-bottom:24px}.stitle{font-size:14px;font-weight:700;margin-bottom:12px}
+.note{font-size:12px;color:var(--dm);margin-top:10px;padding:10px 14px;background:var(--s2);border-radius:8px;border-left:3px solid var(--ac)}
+.tw{overflow-x:auto;border-radius:10px;border:1px solid var(--bd);background:var(--s1);margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+th{background:var(--s2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--dm);padding:10px 10px;text-align:right;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:1}
+th:first-child,td:first-child{text-align:left;padding-left:14px}
+td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px}
+tr:last-child td{border-bottom:none}tr:hover td{background:rgba(108,138,255,0.03)}
+.rh{color:var(--gn)}.rm{color:var(--og)}.rl{color:var(--rd)}
+.tot-row td{background:var(--s2);font-weight:700;border-top:2px solid var(--bd)}
+.sortable{cursor:pointer;user-select:none}.sortable:hover{color:var(--ac)}
+.sortable::after{content:'';display:inline-block;margin-left:4px;font-size:10px}.sortable.asc::after{content:'▲'}.sortable.desc::after{content:'▼'}
+.status-badge{display:inline-block;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:600;font-family:'Noto Sans JP',sans-serif}
+.st-none{background:rgba(139,144,165,0.15);color:var(--dm)}.st-free{background:rgba(108,138,255,0.15);color:var(--ac)}
+.st-paid{background:rgba(52,211,153,0.15);color:var(--gn)}.st-pending{background:rgba(251,191,36,0.15);color:var(--og)}.st-other{background:rgba(139,144,165,0.1);color:var(--dm)}
+.carrier-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;font-family:'Noto Sans JP',sans-serif}
+.c-sb{background:rgba(248,113,113,0.12);color:#f87171}.c-dc{background:rgba(251,191,36,0.12);color:#fbbf24}
+.c-au{background:rgba(251,191,36,0.12);color:#fb923c}.c-ic{background:rgba(108,138,255,0.12);color:#6c8aff}
+.c-gm{background:rgba(52,211,153,0.12);color:#34d399}.c-ot{background:rgba(139,144,165,0.12);color:#8b90a5}
+.clickable{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}.clickable:hover{color:var(--ac)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;display:flex;flex-direction:column}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:4px}.modal-sub{font-size:12px;color:var(--dm);margin-bottom:12px}
+.modal-ids{flex:1;overflow-y:auto;background:var(--s2);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.8;white-space:pre-wrap;max-height:50vh}
+.modal-actions{display:flex;gap:8px;margin-top:14px}.modal-actions button{flex:1}
+.debug-box{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:16px;font-size:11px;color:var(--dm)}.debug-box strong{color:var(--tx)}
+@media print{body{background:#fff!important;color:#222!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4 landscape;margin:10mm}#drop-zone,.debug-box,.date-bar,.tabs,.btn,.btn-p,.note,.modal-overlay,#pdf-btn-wrap{display:none!important}#dashboard{display:block!important;padding:0!important}.tc{display:block!important;margin-bottom:20px}#tab-adcode{display:none!important}.sc{border:1px solid #bbb;background:#f5f5f5!important}.sc .v{color:#222!important}.tw{border:1px solid #bbb;background:#fff!important}th{background:#e8e8e8!important;color:#222!important}td{color:#222!important;background:#fff!important;border-color:#ddd!important}.tot-row td{background:#e8e8e8!important}.clickable{text-decoration:none!important;color:#222!important}.carrier-badge,.status-badge{border:1px solid #999;color:#222!important;background:#e8e8e8!important}#print-title{display:block!important}}
+#print-title{display:none;font-size:10px;color:#555;margin-bottom:4px}
+.split-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.split-grid{grid-template-columns:1fr}}
+@media(max-width:768px){#dashboard{padding:12px}.summary-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div id="drop-zone"><h1>サイト分析ダッシュボード</h1><p>CSVをドロップして即座に分析</p>
+<div class="drop-area" id="drop-area"><div class="icon">📊</div><div class="label">CSVをドロップ or クリック</div><div class="sub">タブ/カンマ区切り・Shift_JIS/UTF-8対応</div></div>
+<input type="file" id="file-input" accept=".csv,.tsv,.txt"></div>
+
+<div id="dashboard">
+<div class="header"><h1>📊 サイト分析</h1><div class="header-meta"><span>読込: <span class="mono" id="load-time">-</span></span><span id="pdf-btn-wrap"><button class="btn btn-p" onclick="window.print()">PDF出力</button></span><button class="btn" onclick="location.reload()">別のCSVを読む</button></div></div>
+<div class="date-bar"><label>対象日:</label><input type="date" id="target-date"><button class="btn btn-p" onclick="reAnalyze()">再分析</button><button class="btn" onclick="setToday()">今日</button></div>
+<div id="print-title"></div><div id="debug-info" class="debug-box"></div>
+<div class="summary-row" id="summary-cards"></div>
+<div class="tabs">
+<button class="tab active" data-tab="free">未課金者分析</button>
+<button class="tab" data-tab="paid">課金者分析</button>
+<button class="tab" data-tab="newuser">初回ログイン起点</button>
+<button class="tab" data-tab="carrier">キャリア別</button>
+<button class="tab" data-tab="adcode">広告コード別</button>
+</div>
+<div class="tc active" id="tab-free"><div class="section">
+<div class="stitle">未課金者ステップ × ログイン経過日数</div>
+<div class="tw"><table><thead><tr><th>ステップ</th><th>人数</th><th>1日以内</th><th>3日以内</th><th>7日以内</th><th>それ以外</th></tr></thead><tbody id="tb-free"></tbody></table></div>
+<div class="note">💡 各セルの数字クリックでIDコピー可能。「それ以外」が多いステップ＝離脱ポイント。</div>
+</div></div>
+<div class="tc" id="tab-paid"><div class="section">
+<div class="stitle">課金者ステータス</div>
+<div class="tw"><table><thead><tr><th>区分</th><th>人数</th><th>今日ログイン</th><th>率</th><th>今日送信</th><th>率</th><th>売上</th></tr></thead><tbody id="tb-paid-status"></tbody></table></div></div>
+<div class="section"><div class="stitle">購入回数分布</div>
+<div class="tw"><table><thead><tr><th>購入回数</th><th>人数</th><th>構成比</th><th>累計</th></tr></thead><tbody id="tb-paid-dist"></tbody></table></div>
+</div></div>
+<div class="tc" id="tab-newuser">
+<div class="section"><div class="stitle">当日初回ログイン</div>
+<div class="tw"><table><thead><tr><th>区分</th><th>人数</th></tr></thead><tbody id="tb-new-today"></tbody></table></div></div>
+<div class="section"><div class="stitle">初回ログイン3日以内</div>
+<div class="tw"><table><thead><tr><th>区分</th><th>人数</th><th>今日ログイン</th><th>今日送信</th></tr></thead><tbody id="tb-new-3d"></tbody></table></div></div>
+<div class="section"><div class="stitle">初回ログイン7日以内</div>
+<div class="tw"><table><thead><tr><th>区分</th><th>人数</th><th>今日ログイン</th><th>今日送信</th></tr></thead><tbody id="tb-new-7d"></tbody></table></div></div>
+</div>
+<div class="tc" id="tab-carrier"><div class="section"><div class="tw"><table><thead><tr>
+<th>キャリア</th><th>人数</th><th>構成比</th><th>今日ログイン</th><th>率</th><th>返信者</th><th>率</th><th>課金者</th><th>率</th><th>売上</th>
+</tr></thead><tbody id="tb-carrier"></tbody></table></div></div></div>
+<div class="tc" id="tab-adcode"><div class="section">
+<div class="stitle">広告コード別 <span style="font-size:11px;color:var(--dm);font-weight:400">（ヘッダークリックで並替）</span></div>
+<div class="tw"><table><thead><tr>
+<th class="sortable" data-sort="name">広告コード</th><th class="sortable" data-sort="t">人数</th>
+<th class="sortable" data-sort="lo">ログイン</th><th class="sortable" data-sort="lo_r">率</th>
+<th class="sortable" data-sort="se">返信者</th><th class="sortable" data-sort="se_r">率</th>
+<th class="sortable" data-sort="pu">課金者</th><th class="sortable" data-sort="pu_r">率</th>
+<th class="sortable" data-sort="rev">売上</th>
+</tr></thead><tbody id="tb-adcode"></tbody></table></div></div></div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title" id="modal-title"></div><div class="modal-sub" id="modal-sub"></div><div class="modal-ids" id="modal-ids"></div><div class="modal-actions"><button class="btn btn-p" onclick="copyIds()">コピー</button><button class="btn" onclick="closeModal()">閉じる</button></div></div></div>
+
+<script>
+var COL={PROF2:14,FIRST_LOGIN:20,LAST_LOGIN:21,SEND_COUNT:22,LAST_SEND:23,AD_CODE:26,REG_TIME:27,BUY_AMOUNT:28,BUY_COUNT:29,FIRST_BUY:30,LAST_BUY:31,EMAIL:3,MEMBER_ID:35};
+var rawData=[],targetDate=new Date(),idMap={},adcodeStore=null,adSortBound=false;
+
+function storeIds(k,ids){idMap[k]=ids}
+function cnum(key,label,ids,count){if(count===undefined)count=ids.length;storeIds(key,ids);if(count===0)return'0';return'<span class="clickable" onclick="showIds(\''+key+'\',\''+label.replace(/'/g,"\\'")+'\')">'+count.toLocaleString()+'</span>'}
+function showIds(k,l){var ids=idMap[k]||[];document.getElementById('modal-title').textContent=l;document.getElementById('modal-sub').textContent=ids.length+'件';document.getElementById('modal-ids').textContent=ids.join('\n');document.getElementById('modal-overlay').classList.add('open')}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+function copyIds(){navigator.clipboard.writeText(document.getElementById('modal-ids').textContent).then(function(){var b=document.querySelector('.modal-actions .btn-p');b.textContent='コピーしました';setTimeout(function(){b.textContent='コピー'},1500)})}
+
+function rc(r){return r>=50?'rh':r>=25?'rm':'rl'}
+function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'0.0%'}
+function pctN(n,t){return t>0?n/t*100:0}
+function yen(n){return'¥'+n.toLocaleString()}
+
+function tsToDate(ts){if(!ts)return null;var v=String(ts).trim();if(v===''||v==='0')return null;var n=parseInt(v);if(isNaN(n)||n===0)return null;return new Date(n*1000)}
+function toJST(d){if(!d)return null;var j=new Date(d.getTime()+9*3600000);return{y:j.getUTCFullYear(),m:j.getUTCMonth(),d:j.getUTCDate()}}
+function sameDay(d1,d2){if(!d1||!d2)return false;var a=toJST(d1),b=toJST(d2);if(!a||!b)return false;return a.y===b.y&&a.m===b.m&&a.d===b.d}
+function daysDiff(from,to){if(!from||!to)return Infinity;var a=toJST(from),b=toJST(to);if(!a||!b)return Infinity;return Math.floor((Date.UTC(b.y,b.m,b.d)-Date.UTC(a.y,a.m,a.d))/86400000)}
+function jstDateStr(date){var j=toJST(date);if(!j)return'';return j.y+'-'+String(j.m+1).padStart(2,'0')+'-'+String(j.d).padStart(2,'0')}
+
+function getCarrier(email){if(!email||email.indexOf('@')<0)return'その他';var d=email.split('@')[1].toLowerCase();if(d==='softbank.ne.jp'||d==='i.softbank.jp'||d.indexOf('.vodafone.ne.jp')>0)return'SoftBank';if(d==='docomo.ne.jp')return'docomo';if(d==='ezweb.ne.jp'||d==='au.com')return'au';if(d==='icloud.com'||d==='me.com'||d==='mac.com')return'iCloud';if(d==='gmail.com')return'Gmail';if(d==='yahoo.co.jp')return'Yahoo';if(d==='ymobile.ne.jp')return'Y!mobile';return'その他'}
+var CC={'SoftBank':'c-sb','docomo':'c-dc','au':'c-au','iCloud':'c-ic','Gmail':'c-gm'};
+function cBadge(c){return'<span class="carrier-badge '+(CC[c]||'c-ot')+'">'+c+'</span>'}
+
+function getStatus(o){var v=parseInt(o);if(isNaN(v))return{label:'不明',group:'exclude'};if(v===1)return{label:'未返信',group:'free'};if(v===2)return{label:'返信1回〜',group:'free'};if(v===3)return{label:'返信2回〜',group:'free'};if(v===4)return{label:'返信3回〜',group:'free'};if(v>=5&&v<=13)return{label:'課金者',group:'paid'};if(v===14)return{label:'テスト',group:'exclude'};if(v===15)return{label:'配信停止',group:'exclude'};if(v===16)return{label:'優良',group:'paid'};if(v===17)return{label:'来月入金予定',group:'paid'};if(v===18)return{label:'今月入金予定',group:'paid'};return{label:'不明('+v+')',group:'exclude'}}
+
+function detectSep(line){return(line.match(/\t/g)||[]).length>(line.match(/,/g)||[]).length?'\t':','}
+function parseCSV(text){var hi=text.indexOf('\n');if(hi<0)return null;var hl=text.substring(0,hi).replace(/\r$/,'');var sep=detectSep(hl);var hc=hl.split(sep).length;var rows=[],i=hi+1,len=text.length;while(i<len){var row=[],f='',q=false;while(i<len){var ch=text[i];if(q){if(ch==='"'){if(i+1<len&&text[i+1]==='"'){f+='"';i+=2}else{q=false;i++}}else{f+=ch;i++}}else{if(ch==='"'){q=true;i++}else if(ch===sep){row.push(f);f='';i++}else if(ch==='\r'){i++}else if(ch==='\n'){i++;break}else{f+=ch;i++}}}row.push(f);if(row.length>=Math.min(hc,COL.LAST_BUY+1))rows.push(row)}return{rows:rows,sep:sep,hc:hc}}
+
+function analyze(rows,target){
+  var free={},paid={},carriers={},adcodes={};
+  var total=0,excluded=0,tLo=0,tSe=0,tBu=0,tRev=0,totalReply=0;
+  var paidUsers=[],newToday=[],new3d=[],new7d=[];
+  idMap={};
+
+  var FREE_STEPS=['未返信','返信1回〜','返信2回〜','返信3回〜'];
+  var PAID_LABELS=['課金者','優良','来月入金予定','今月入金予定'];
+  FREE_STEPS.forEach(function(s){free[s]={t:0,d1:[],d3:[],d7:[],dOther:[],ids:[]}});
+  PAID_LABELS.forEach(function(s){paid[s]={t:0,lo:0,se:0,rev:0,ids:[],lo_ids:[],se_ids:[]}});
+
+  rows.forEach(function(row){
+    var st=getStatus(row[COL.PROF2]);
+    if(st.group==='exclude'){excluded++;return}
+    total++;
+    var mid=row[COL.MEMBER_ID]||'';
+    var ll=tsToDate(row[COL.LAST_LOGIN]);
+    var ls=tsToDate(row[COL.LAST_SEND]);
+    var fl=tsToDate(row[COL.FIRST_LOGIN]);
+    var fb=tsToDate(row[COL.FIRST_BUY]);
+    var buyAmt=parseInt(row[COL.BUY_AMOUNT])||0;
+    var buyCnt=parseInt(row[COL.BUY_COUNT])||0;
+    var sendCnt=parseInt(row[COL.SEND_COUNT])||0;
+    var email=row[COL.EMAIL]||'';
+    var carrier=getCarrier(email);
+    var ad=(row[COL.AD_CODE]||'').trim();
+    var isLogin=sameDay(ll,target);
+    var isSend=sameDay(ls,target);
+
+    if(isLogin)tLo++;
+    if(isSend)tSe++;
+    if(sendCnt>0)totalReply++;
+
+    // Carrier
+    if(!carriers[carrier])carriers[carrier]={t:0,lo:0,se:0,pu:0,rev:0,ids:[],lo_ids:[],se_ids:[],pu_ids:[]};
+    var cr=carriers[carrier];cr.t++;cr.ids.push(mid);
+    if(isLogin){cr.lo++;cr.lo_ids.push(mid)}
+    if(sendCnt>0){cr.se++;cr.se_ids.push(mid)}
+    if(buyAmt>0){cr.pu++;cr.rev+=buyAmt;cr.pu_ids.push(mid)}
+
+    // Ad code
+    if(ad){
+      if(!adcodes[ad])adcodes[ad]={t:0,lo:0,se:0,pu:0,rev:0,ids:[],lo_ids:[],se_ids:[],pu_ids:[]};
+      var acd=adcodes[ad];acd.t++;acd.ids.push(mid);
+      if(isLogin){acd.lo++;acd.lo_ids.push(mid)}
+      if(sendCnt>0){acd.se++;acd.se_ids.push(mid)}
+      if(buyAmt>0){acd.pu++;acd.rev+=buyAmt;acd.pu_ids.push(mid)}
+    }
+
+    if(st.group==='free'){
+      var fd=free[st.label];if(!fd)return;
+      fd.t++;fd.ids.push(mid);
+      var gap=daysDiff(ll,target);
+      if(gap<=1)fd.d1.push(mid);
+      else if(gap<=3)fd.d3.push(mid);
+      else if(gap<=7)fd.d7.push(mid);
+      else fd.dOther.push(mid);
+      if(buyAmt>0){tBu++;tRev+=buyAmt}
+    } else if(st.group==='paid'){
+      tBu++;tRev+=buyAmt;
+      var pl=paid[st.label];if(!pl){paid[st.label]={t:0,lo:0,se:0,rev:0,ids:[],lo_ids:[],se_ids:[]};pl=paid[st.label]}
+      pl.t++;pl.ids.push(mid);pl.rev+=buyAmt;
+      if(isLogin){pl.lo++;pl.lo_ids.push(mid)}
+      if(isSend){pl.se++;pl.se_ids.push(mid)}
+      paidUsers.push({mid:mid,buyCnt:buyCnt,buyAmt:buyAmt});
+    }
+
+    // New user analysis
+    var flDays=daysDiff(fl,target);
+    if(flDays===0)newToday.push({mid:mid,st:st,isLogin:isLogin,isSend:isSend,buyCnt:buyCnt,sendCnt:sendCnt,buyAmt:buyAmt});
+    if(flDays>=0&&flDays<=3)new3d.push({mid:mid,st:st,isLogin:isLogin,isSend:isSend,buyCnt:buyCnt,sendCnt:sendCnt,buyAmt:buyAmt});
+    if(flDays>=0&&flDays<=7)new7d.push({mid:mid,st:st,isLogin:isLogin,isSend:isSend,buyCnt:buyCnt,sendCnt:sendCnt,buyAmt:buyAmt});
+  });
+
+  return{free:free,paid:paid,carriers:carriers,adcodes:adcodes,total:total,excluded:excluded,tLo:tLo,tSe:tSe,tBu:tBu,tRev:tRev,totalReply:totalReply,paidUsers:paidUsers,newToday:newToday,new3d:new3d,new7d:new7d};
+}
+
+function render(res){
+  var total=res.total,tLo=res.tLo,tSe=res.tSe,tBu=res.tBu,tRev=res.tRev;
+
+  document.getElementById('summary-cards').innerHTML=
+    '<div class="sc"><div class="l">総会員</div><div class="v">'+total.toLocaleString()+'</div><div class="sb">除外:'+res.excluded+'</div></div>'+
+    '<div class="sc"><div class="l">今日ログイン</div><div class="v" style="color:var(--gn)">'+tLo.toLocaleString()+'</div><div class="sb">'+pct(tLo,total)+'</div></div>'+
+    '<div class="sc"><div class="l">累計返信者</div><div class="v" style="color:var(--ac)">'+res.totalReply.toLocaleString()+'</div><div class="sb">'+pct(res.totalReply,total)+'</div></div>'+
+    '<div class="sc"><div class="l">課金者</div><div class="v" style="color:var(--gn)">'+tBu.toLocaleString()+'</div><div class="sb">'+pct(tBu,total)+'</div></div>'+
+    '<div class="sc"><div class="l">累計売上</div><div class="v" style="color:var(--og);font-size:20px">'+yen(tRev)+'</div></div>';
+
+  // === Free user table ===
+  var freeKeys=['未返信','返信1回〜','返信2回〜','返信3回〜'];
+  var fTot={t:0,d1:0,d3:0,d7:0,dO:0};
+  document.getElementById('tb-free').innerHTML=freeKeys.map(function(k,i){
+    var d=res.free[k];if(!d)return'';var e='fr'+i;
+    fTot.t+=d.t;fTot.d1+=d.d1.length;fTot.d3+=d.d3.length;fTot.d7+=d.d7.length;fTot.dO+=d.dOther.length;
+    return'<tr><td style="font-family:Noto Sans JP,sans-serif">'+k+'</td>'+
+      '<td>'+cnum(e+'t',k+' 全員',d.ids)+'</td>'+
+      '<td>'+cnum(e+'d1',k+' 1日以内',d.d1)+'</td>'+
+      '<td>'+cnum(e+'d3',k+' 3日以内',d.d3)+'</td>'+
+      '<td>'+cnum(e+'d7',k+' 7日以内',d.d7)+'</td>'+
+      '<td>'+cnum(e+'do',k+' それ以外',d.dOther)+'</td></tr>';
+  }).join('')+'<tr class="tot-row"><td style="font-family:Noto Sans JP,sans-serif">合計</td><td>'+fTot.t.toLocaleString()+'</td><td>'+fTot.d1.toLocaleString()+'</td><td>'+fTot.d3.toLocaleString()+'</td><td>'+fTot.d7.toLocaleString()+'</td><td>'+fTot.dO.toLocaleString()+'</td></tr>';
+
+  // === Paid status ===
+  var paidKeys=['課金者','優良','来月入金予定','今月入金予定'];
+  var pTot={t:0,lo:0,se:0,rev:0};
+  document.getElementById('tb-paid-status').innerHTML=paidKeys.filter(function(k){return res.paid[k]&&res.paid[k].t>0}).map(function(k,i){
+    var d=res.paid[k];var e='pa'+i;pTot.t+=d.t;pTot.lo+=d.lo;pTot.se+=d.se;pTot.rev+=d.rev;
+    return'<tr><td style="font-family:Noto Sans JP,sans-serif">'+k+'</td><td>'+cnum(e+'t',k,d.ids)+'</td><td>'+cnum(e+'l',k+' ログイン',d.lo_ids)+'</td><td class="'+rc(pctN(d.lo,d.t))+'">'+pct(d.lo,d.t)+'</td><td>'+cnum(e+'s',k+' 送信',d.se_ids)+'</td><td class="'+rc(pctN(d.se,d.t))+'">'+pct(d.se,d.t)+'</td><td>'+yen(d.rev)+'</td></tr>';
+  }).join('')+'<tr class="tot-row"><td style="font-family:Noto Sans JP,sans-serif">合計</td><td>'+pTot.t.toLocaleString()+'</td><td>'+pTot.lo.toLocaleString()+'</td><td>'+pct(pTot.lo,pTot.t)+'</td><td>'+pTot.se.toLocaleString()+'</td><td>'+pct(pTot.se,pTot.t)+'</td><td>'+yen(pTot.rev)+'</td></tr>';
+
+  // === Purchase count distribution ===
+  var bk=[[1,1,'1回のみ'],[2,5,'2〜5回'],[6,10,'6〜10回'],[11,30,'11〜30回'],[31,99999,'31回以上']];
+  var cum=0,pu=res.paidUsers;
+  document.getElementById('tb-paid-dist').innerHTML=bk.map(function(b,i){
+    var matched=pu.filter(function(u){return u.buyCnt>=b[0]&&u.buyCnt<=b[1]});
+    cum+=matched.length;
+    return'<tr><td style="text-align:left">'+b[2]+'</td><td>'+cnum('pud'+i,b[2],matched.map(function(u){return u.mid}))+'</td><td>'+pct(matched.length,pu.length)+'</td><td>'+pct(cum,pu.length)+'</td></tr>';
+  }).join('');
+
+  // === New user analysis ===
+  function renderNewBlock(tbId,users,prefix){
+    var steps=['未返信','返信1回〜','返信2回〜','返信3回〜'];
+    var hasSend=tbId!=='tb-new-today';
+    var freeU=users.filter(function(u){return u.st.group==='free'});
+    var paidU=users.filter(function(u){return u.st.group==='paid'});
+    var html='<tr><td style="font-family:Noto Sans JP,sans-serif;font-weight:700">合計</td><td>'+cnum(prefix+'all','全員',users.map(function(u){return u.mid}))+'</td>'+(hasSend?'<td>'+users.filter(function(u){return u.isLogin}).length+'</td><td>'+users.filter(function(u){return u.isSend}).length+'</td>':'')+'</tr>';
+    steps.forEach(function(s,i){
+      var m=users.filter(function(u){return u.st.label===s});
+      if(m.length>0)html+='<tr><td style="font-family:Noto Sans JP,sans-serif;padding-left:24px">└ '+s+'</td><td>'+cnum(prefix+'f'+i,s,m.map(function(u){return u.mid}))+'</td>'+(hasSend?'<td>'+m.filter(function(u){return u.isLogin}).length+'</td><td>'+m.filter(function(u){return u.isSend}).length+'</td>':'')+'</tr>';
+    });
+    html+='<tr><td style="font-family:Noto Sans JP,sans-serif;font-weight:700;color:var(--gn)">課金者</td><td>'+cnum(prefix+'paid','課金者',paidU.map(function(u){return u.mid}))+'</td>'+(hasSend?'<td>'+paidU.filter(function(u){return u.isLogin}).length+'</td><td>'+paidU.filter(function(u){return u.isSend}).length+'</td>':'')+'</tr>';
+    if(paidU.length>0){
+      var bk2=[[1,1,'1回'],[2,5,'2-5回'],[6,99999,'6回以上']];
+      bk2.forEach(function(b,i){
+        var m=paidU.filter(function(u){return u.buyCnt>=b[0]&&u.buyCnt<=b[1]});
+        if(m.length>0)html+='<tr><td style="font-family:Noto Sans JP,sans-serif;padding-left:24px;color:var(--dm)">└ 入金'+b[2]+'</td><td>'+cnum(prefix+'pb'+i,'入金'+b[2],m.map(function(u){return u.mid}))+'</td>'+(hasSend?'<td></td><td></td>':'')+'</tr>';
+      });
+    }
+    document.getElementById(tbId).innerHTML=html;
+  }
+  renderNewBlock('tb-new-today',res.newToday,'nt');
+  renderNewBlock('tb-new-3d',res.new3d,'n3');
+  renderNewBlock('tb-new-7d',res.new7d,'n7');
+
+  // === Carrier ===
+  var cKeys=Object.keys(res.carriers).sort(function(a,b){return res.carriers[b].t-res.carriers[a].t});
+  var cTot=cKeys.reduce(function(s,k){return s+res.carriers[k].t},0);
+  document.getElementById('tb-carrier').innerHTML=cKeys.map(function(k,i){
+    var d=res.carriers[k],e='cr'+i;
+    return'<tr><td>'+cBadge(k)+'</td><td>'+cnum(e+'t',k,d.ids)+'</td><td>'+pct(d.t,cTot)+'</td><td>'+cnum(e+'l',k+' ログイン',d.lo_ids)+'</td><td class="'+rc(pctN(d.lo,d.t))+'">'+pct(d.lo,d.t)+'</td><td>'+cnum(e+'s',k+' 返信者',d.se_ids)+'</td><td class="'+rc(pctN(d.se,d.t))+'">'+pct(d.se,d.t)+'</td><td>'+cnum(e+'p',k+' 課金者',d.pu_ids)+'</td><td class="'+rc(pctN(d.pu,d.t))+'">'+pct(d.pu,d.t)+'</td><td>'+yen(d.rev)+'</td></tr>';
+  }).join('');
+
+  // === Ad code ===
+  adcodeStore=res.adcodes;renderAdCode('t','desc');
+  if(!adSortBound){adSortBound=true;document.querySelectorAll('#tab-adcode .sortable').forEach(function(th){th.addEventListener('click',function(){var c=th.dataset.sort,w=th.classList.contains('desc');document.querySelectorAll('#tab-adcode .sortable').forEach(function(t){t.classList.remove('asc','desc')});var dir=w?'asc':'desc';th.classList.add(dir);renderAdCode(c,dir)})})}
+
+  document.getElementById('print-title').textContent='出力: '+new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
+}
+
+function renderAdCode(sc,dir){
+  if(!adcodeStore)return;var ks=Object.keys(adcodeStore);
+  var tot={t:0,lo:0,se:0,pu:0,rev:0};ks.forEach(function(k){var d=adcodeStore[k];tot.t+=d.t;tot.lo+=d.lo;tot.se+=d.se;tot.pu+=d.pu;tot.rev+=d.rev});
+  var sorted=ks.slice().sort(function(a,b){var da=adcodeStore[a],db=adcodeStore[b];if(sc==='name')return dir==='asc'?a.localeCompare(b):b.localeCompare(a);var m={t:'t',lo:'lo',lo_r:function(d){return d.t?d.lo/d.t:0},se:'se',se_r:function(d){return d.t?d.se/d.t:0},pu:'pu',pu_r:function(d){return d.t?d.pu/d.t:0},rev:'rev'};var fn=m[sc];var va=typeof fn==='function'?fn(da):da[fn]||0;var vb=typeof fn==='function'?fn(db):db[fn]||0;return dir==='asc'?va-vb:vb-va});
+  document.getElementById('tb-adcode').innerHTML=sorted.map(function(k,i){var d=adcodeStore[k],e='ad'+i;
+    return'<tr><td style="font-size:12px;max-width:260px;overflow:hidden;text-overflow:ellipsis;font-family:Noto Sans JP,sans-serif" title="'+k+'">'+k+'</td><td>'+cnum(e+'t',k,d.ids)+'</td><td>'+cnum(e+'l',k+' ログイン',d.lo_ids)+'</td><td class="'+rc(pctN(d.lo,d.t))+'">'+pct(d.lo,d.t)+'</td><td>'+cnum(e+'s',k+' 返信者',d.se_ids)+'</td><td class="'+rc(pctN(d.se,d.t))+'">'+pct(d.se,d.t)+'</td><td>'+cnum(e+'p',k+' 課金者',d.pu_ids)+'</td><td class="'+rc(pctN(d.pu,d.t))+'">'+pct(d.pu,d.t)+'</td><td>'+yen(d.rev)+'</td></tr>';
+  }).join('')+'<tr class="tot-row"><td>合計</td><td>'+tot.t.toLocaleString()+'</td><td>'+tot.lo.toLocaleString()+'</td><td>'+pct(tot.lo,tot.t)+'</td><td>'+tot.se.toLocaleString()+'</td><td>'+pct(tot.se,tot.t)+'</td><td>'+tot.pu.toLocaleString()+'</td><td>'+pct(tot.pu,tot.t)+'</td><td>'+yen(tot.rev)+'</td></tr>';
+}
+
+function reAnalyze(){var v=document.getElementById('target-date').value;if(!v)return;var p=v.split('-').map(Number);targetDate=new Date(Date.UTC(p[0],p[1]-1,p[2])-9*3600000+12*3600000);render(analyze(rawData,targetDate))}
+function setToday(){var now=new Date();document.getElementById('target-date').value=jstDateStr(now);targetDate=now;render(analyze(rawData,targetDate))}
+
+function processText(text){
+  var parsed=parseCSV(text);if(!parsed||parsed.rows.length===0){alert('データが読み取れませんでした。');return}
+  rawData=parsed.rows;var now=new Date();targetDate=now;
+  document.getElementById('target-date').value=jstDateStr(now);
+  document.getElementById('load-time').textContent=now.toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
+  var dbL=0,dbS=0;rawData.forEach(function(r){if(sameDay(tsToDate(r[COL.LAST_LOGIN]),targetDate))dbL++;if(sameDay(tsToDate(r[COL.LAST_SEND]),targetDate))dbS++});
+  document.getElementById('debug-info').innerHTML='<strong>基本:</strong> 行数='+rawData.length+' | <strong>今日該当:</strong> ログイン='+dbL+' 送信='+dbS;
+  document.getElementById('drop-zone').classList.add('hidden');document.getElementById('dashboard').classList.add('active');
+  render(analyze(rawData,targetDate));
+}
+
+function handleFile(file){var reader=new FileReader();reader.onload=function(e){var u8=new Uint8Array(e.target.result);var text;try{text=new TextDecoder('utf-8').decode(u8);if(text.indexOf('\uFFFD')>=0)throw 0}catch(e){try{text=new TextDecoder('shift_jis').decode(u8)}catch(e2){text=new TextDecoder('utf-8').decode(u8)}}processText(text)};reader.readAsArrayBuffer(file)}
+
+var dropArea=document.getElementById('drop-area'),fileInput=document.getElementById('file-input'),dropZone=document.getElementById('drop-zone');
+dropArea.addEventListener('click',function(){fileInput.click()});
+fileInput.addEventListener('change',function(e){if(e.target.files[0])handleFile(e.target.files[0])});
+['dragenter','dragover'].forEach(function(ev){dropZone.addEventListener(ev,function(e){e.preventDefault();dropZone.classList.add('dragover')})});
+['dragleave','drop'].forEach(function(ev){dropZone.addEventListener(ev,function(e){e.preventDefault();dropZone.classList.remove('dragover')})});
+dropZone.addEventListener('drop',function(e){if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+document.querySelectorAll('.tab').forEach(function(tab){tab.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active')});document.querySelectorAll('.tc').forEach(function(c){c.classList.remove('active')});tab.classList.add('active');document.getElementById('tab-'+tab.dataset.tab).classList.add('active')})});
+</script>
+</body>
+</html>

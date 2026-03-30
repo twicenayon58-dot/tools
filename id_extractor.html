@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会員ID抽出ツール</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: #252a38;
+    --border2: #2e3548;
+    --accent: #4f9cf9;
+    --accent2: #38d9a9;
+    --danger: #ff6b6b;
+    --warn: #ffd43b;
+    --text: #e8ecf4;
+    --text2: #8892a4;
+    --text3: #545d6e;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Noto Sans JP', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header h1 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--text);
+  }
+  .header-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* ===== LAYOUT ===== */
+  .main { display: flex; height: calc(100vh - 57px); }
+
+  .left-panel {
+    width: 400px;
+    min-width: 360px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== UPLOAD ZONE ===== */
+  .upload-zone {
+    margin: 16px;
+    border: 1.5px dashed var(--border2);
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    background: var(--surface2);
+  }
+  .upload-zone:hover, .upload-zone.drag {
+    border-color: var(--accent);
+    background: rgba(79,156,249,.06);
+  }
+  .upload-zone input { position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%; }
+  .upload-icon { font-size: 28px; margin-bottom: 8px; }
+  .upload-label { font-size: 12px; color: var(--text2); }
+  .upload-label strong { color: var(--accent); }
+  .upload-filename {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+  }
+
+  /* ===== DEFAULT SETTING ===== */
+  .default-bar {
+    padding: 8px 16px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .default-bar label {
+    font-size: 11px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+  .num-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 4px 8px;
+    width: 70px;
+    outline: none;
+    text-align: center;
+  }
+  .num-input:focus { border-color: var(--accent); }
+  .btn-apply {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: opacity .15s;
+    white-space: nowrap;
+  }
+  .btn-apply:hover { opacity: .85; }
+
+  /* ===== AD CODE TABLE ===== */
+  .table-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px 16px;
+  }
+
+  .ad-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .ad-table th {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 8px 6px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 2;
+  }
+  .ad-table th.right { text-align: right; }
+  .ad-table td {
+    padding: 6px 6px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .ad-table tr:hover td { background: rgba(255,255,255,.02); }
+
+  .code-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    word-break: break-all;
+    line-height: 1.4;
+  }
+  .total-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .count-cell { text-align: right; }
+  .count-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 6px;
+    width: 60px;
+    outline: none;
+    text-align: center;
+  }
+  .count-input:focus { border-color: var(--accent); }
+  .over { border-color: var(--danger) !important; color: var(--danger) !important; }
+  .check-cell { text-align: center; }
+  .check-cell input[type=checkbox] {
+    width: 15px; height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* ===== RIGHT PANEL ===== */
+  .result-header {
+    padding: 14px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .result-header h2 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-chip {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    color: var(--text2);
+  }
+  .stat-chip span { color: var(--accent2); font-weight: 700; }
+  .btn-extract {
+    background: linear-gradient(135deg, #4f9cf9, #38d9a9);
+    color: #0d0f14;
+    border: none;
+    border-radius: 5px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 20px;
+    cursor: pointer;
+    margin-left: auto;
+    transition: opacity .15s, transform .1s;
+    letter-spacing: .03em;
+  }
+  .btn-extract:hover { opacity: .88; transform: translateY(-1px); }
+  .btn-extract:active { transform: translateY(0); }
+  .btn-extract:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+  .result-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 20px;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .result-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .result-box-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  .id-textarea {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--accent2);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 12px 14px;
+    resize: none;
+    outline: none;
+    overflow-y: auto;
+  }
+  .id-textarea:focus { border-color: var(--accent); }
+
+  .copy-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .btn-copy {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-copy.copied { border-color: var(--accent2); color: var(--accent2); }
+  .copy-hint { font-size: 11px; color: var(--text3); }
+
+  /* breakdown */
+  .breakdown {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.8;
+    max-height: 130px;
+    overflow-y: auto;
+  }
+  .breakdown span { color: var(--text); }
+  .breakdown .zero { color: var(--text3); }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--text3);
+  }
+  .empty-state .icon { font-size: 40px; opacity: .4; }
+  .empty-state p { font-size: 12px; }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📤</div>
+  <h1>会員ID 抽出ツール</h1>
+  <div class="header-sub">広告コード別 / バッチ選定</div>
+</div>
+
+<div class="main">
+  <!-- 左：設定パネル -->
+  <div class="left-panel">
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="csvInput" accept=".csv" />
+      <div class="upload-icon">📂</div>
+      <div class="upload-label">CSVをドロップ or <strong>クリックして選択</strong></div>
+      <div class="upload-label" style="margin-top:4px; font-size:11px;">Shift-JIS / UTF-8 自動判定</div>
+      <div class="upload-filename" id="uploadFilename"></div>
+    </div>
+
+    <div class="default-bar">
+      <label>デフォルト件数</label>
+      <input type="number" class="num-input" id="defaultCount" value="50" min="1" />
+      <button class="btn-apply" id="btnApplyDefault">全コードに適用</button>
+    </div>
+
+    <div class="table-wrap" id="tableWrap">
+      <div class="empty-state" id="tableEmpty">
+        <div class="icon">📋</div>
+        <p>CSVを読み込むと広告コード一覧が表示されます</p>
+      </div>
+      <table class="ad-table" id="adTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>広告コード</th>
+            <th class="right">在庫</th>
+            <th class="right">抽出数</th>
+            <th class="right" style="cursor:pointer;user-select:none;" id="thCheckAll" title="クリックで全選択/全解除">
+          <span id="checkAllIcon">☑</span>
+        </th>
+          </tr>
+        </thead>
+        <tbody id="adTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 右：結果パネル -->
+  <div class="right-panel">
+    <div class="result-header">
+      <h2>抽出結果</h2>
+      <div class="stat-chip">対象コード: <span id="statCodes">0</span></div>
+      <div class="stat-chip">合計件数: <span id="statTotal">0</span></div>
+      <button class="btn-extract" id="btnExtract" disabled>▶ IDを抽出する</button>
+    </div>
+
+    <div class="result-body">
+      <div id="emptyResult" class="empty-state">
+        <div class="icon">🎯</div>
+        <p>左でCSVを読み込み、件数を設定して「抽出」を実行してください</p>
+      </div>
+
+      <div id="resultContent" style="display:none; flex:1; flex-direction:column; gap:12px; overflow:hidden; display:none;">
+        <div class="breakdown" id="breakdown"></div>
+
+        <div class="result-box">
+          <div class="result-box-label">抽出された会員ID（改行区切り）</div>
+          <textarea class="id-textarea" id="idOutput" readonly></textarea>
+        </div>
+
+        <div class="copy-row">
+          <button class="btn-copy" id="btnCopyNewline">
+            <span>📋</span> 改行区切りでコピー
+          </button>
+          <button class="btn-copy" id="btnCopyComma">
+            <span>📋</span> カンマ区切りでコピー
+          </button>
+          <span class="copy-hint" id="copyMsg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== STATE =====
+  let adData = {}; // { code: [id, id, ...] }
+
+  // ===== UPLOAD =====
+  const csvInput = document.getElementById('csvInput');
+  const uploadZone = document.getElementById('uploadZone');
+
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  });
+
+  csvInput.addEventListener('change', () => {
+    if (csvInput.files[0]) processFile(csvInput.files[0]);
+  });
+
+  function processFile(file) {
+    document.getElementById('uploadFilename').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = e => {
+      // Shift-JIS試行
+      let text;
+      try {
+        const sjisDecoder = new TextDecoder('shift-jis');
+        text = sjisDecoder.decode(new Uint8Array(e.target.result));
+        // 文字化けチェック（置換文字が多い場合はUTF-8）
+        if ((text.match(/\uFFFD/g) || []).length > 20) {
+          const utf8Decoder = new TextDecoder('utf-8');
+          text = utf8Decoder.decode(new Uint8Array(e.target.result));
+        }
+      } catch {
+        const utf8Decoder = new TextDecoder('utf-8');
+        text = utf8Decoder.decode(new Uint8Array(e.target.result));
+      }
+      parseCSV(text);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function parseCSV(text) {
+    const lines = text.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return;
+
+    // ヘッダー解析
+    const header = parseCSVLine(lines[0]);
+    const adCodeIdx = header.findIndex(h => h.includes('広告コード'));
+    const memberIdIdx = header.findIndex(h => h.includes('会員ID'));
+
+    if (adCodeIdx === -1 || memberIdIdx === -1) {
+      alert(`カラムが見つかりません。\n広告コード列: ${adCodeIdx}\n会員ID列: ${memberIdIdx}`);
+      return;
+    }
+
+    adData = {};
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVLine(lines[i]);
+      if (row.length <= Math.max(adCodeIdx, memberIdIdx)) continue;
+      const code = row[adCodeIdx].trim();
+      const id = row[memberIdIdx].trim();
+      if (!code || !id) continue;
+      if (!adData[code]) adData[code] = [];
+      adData[code].push(id);
+    }
+
+    renderTable();
+  }
+
+  function parseCSVLine(line) {
+    const result = [];
+    let cur = '';
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+      else { cur += c; }
+    }
+    result.push(cur);
+    return result;
+  }
+
+  // ===== RENDER TABLE =====
+  function renderTable() {
+    const tbody = document.getElementById('adTableBody');
+    tbody.innerHTML = '';
+
+    const codes = Object.keys(adData).sort();
+    const defaultVal = parseInt(document.getElementById('defaultCount').value) || 50;
+
+    codes.forEach(code => {
+      const total = adData[code].length;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><div class="code-label">${code}</div></td>
+        <td class="total-badge">${total.toLocaleString()}</td>
+        <td class="count-cell">
+          <input type="number" class="count-input ${defaultVal > total ? 'over' : ''}"
+            value="${Math.min(defaultVal, total)}"
+            min="0" max="${total}"
+            data-code="${code}" data-max="${total}"
+          />
+        </td>
+        <td class="check-cell">
+          <input type="checkbox" checked data-code-check="${code}" />
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // 入力バリデーション
+    tbody.querySelectorAll('.count-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const max = parseInt(inp.dataset.max);
+        const val = parseInt(inp.value) || 0;
+        if (val > max) inp.classList.add('over');
+        else inp.classList.remove('over');
+        updateStats();
+      });
+    });
+
+    tbody.querySelectorAll('[data-code-check]').forEach(chk => {
+    chk.addEventListener('change', () => { updateStats(); syncCheckAllIcon(); });
+    });
+
+    document.getElementById('tableEmpty').style.display = 'none';
+    document.getElementById('adTable').style.display = 'table';
+    document.getElementById('btnExtract').disabled = false;
+    document.getElementById('checkAllIcon').textContent = '☑';
+    updateStats();
+  }
+
+  // ===== DEFAULT APPLY =====
+  document.getElementById('btnApplyDefault').addEventListener('click', () => {
+    const def = parseInt(document.getElementById('defaultCount').value) || 50;
+    document.querySelectorAll('.count-input').forEach(inp => {
+      const max = parseInt(inp.dataset.max);
+      inp.value = Math.min(def, max);
+      if (def > max) inp.classList.add('over');
+      else inp.classList.remove('over');
+    });
+    updateStats();
+  });
+
+  // ===== STATS =====
+  function updateStats() {
+    let codes = 0, total = 0;
+    document.querySelectorAll('.count-input').forEach(inp => {
+      const code = inp.dataset.code;
+      const chk = document.querySelector(`[data-code-check="${code}"]`);
+      if (!chk || !chk.checked) return;
+      const val = Math.max(0, parseInt(inp.value) || 0);
+      const max = parseInt(inp.dataset.max);
+      if (val > 0) { codes++; total += Math.min(val, max); }
+    });
+    document.getElementById('statCodes').textContent = codes;
+    document.getElementById('statTotal').textContent = total.toLocaleString();
+  }
+
+  // ===== CHECK ALL TOGGLE =====
+  document.getElementById('thCheckAll').addEventListener('click', () => {
+    const checks = document.querySelectorAll('[data-code-check]');
+    if (!checks.length) return;
+    const allChecked = [...checks].every(c => c.checked);
+    checks.forEach(c => c.checked = !allChecked);
+    document.getElementById('checkAllIcon').textContent = allChecked ? '☐' : '☑';
+    updateStats();
+  });
+
+  // アイコン同期（個別チェック変更時）
+  function syncCheckAllIcon() {
+    const checks = document.querySelectorAll('[data-code-check]');
+    if (!checks.length) return;
+    const allChecked = [...checks].every(c => c.checked);
+    document.getElementById('checkAllIcon').textContent = allChecked ? '☑' : '☐';
+  }
+
+  // ===== EXTRACT =====
+  document.getElementById('btnExtract').addEventListener('click', () => {
+    const ids = [];
+    const breakdownLines = [];
+
+    document.querySelectorAll('.count-input').forEach(inp => {
+      const code = inp.dataset.code;
+      const chk = document.querySelector(`[data-code-check="${code}"]`);
+      if (!chk || !chk.checked) return;
+      const val = Math.max(0, parseInt(inp.value) || 0);
+      const max = parseInt(inp.dataset.max);
+      const take = Math.min(val, max);
+      if (take === 0) {
+        breakdownLines.push(`<span class="zero">${code}: 0件 (スキップ)</span>`);
+        return;
+      }
+      const slice = adData[code].slice(0, take);
+      ids.push(...slice);
+      breakdownLines.push(`<span>${code}</span>: ${take}件`);
+    });
+
+    document.getElementById('idOutput').value = ids.join('\n');
+    document.getElementById('breakdown').innerHTML = breakdownLines.join('<br>');
+
+    // 合計更新
+    document.getElementById('statTotal').textContent = ids.length.toLocaleString();
+
+    document.getElementById('emptyResult').style.display = 'none';
+    const rc = document.getElementById('resultContent');
+    rc.style.display = 'flex';
+    rc.style.flexDirection = 'column';
+    rc.style.flex = '1';
+    rc.style.overflow = 'hidden';
+  });
+
+  // ===== COPY =====
+  function doCopy(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+      btn.classList.add('copied');
+      document.getElementById('copyMsg').textContent = `✓ ${text.split('\n').filter(Boolean).length}件コピーしました`;
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        document.getElementById('copyMsg').textContent = '';
+      }, 2000);
+    });
+  }
+
+  document.getElementById('btnCopyNewline').addEventListener('click', function() {
+    doCopy(document.getElementById('idOutput').value, this);
+  });
+
+  document.getElementById('btnCopyComma').addEventListener('click', function() {
+    const ids = document.getElementById('idOutput').value.split('\n').filter(Boolean);
+    doCopy(ids.join(','), this);
+  });
+</script>
+</body>
+</html>

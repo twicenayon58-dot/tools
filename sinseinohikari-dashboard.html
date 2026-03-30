@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会員分析ダッシュボード</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root{
+    --bg:#0c0e17;--s1:#161926;--s2:#1e2233;--s3:#252b40;--bd:#2a3050;--tx:#dde1f0;--dm:#6b7194;
+    --ac:#5b7fff;--gn:#2dd4a0;--rd:#f06878;--og:#f0aa40;--pp:#9f7fff;--cy:#22cce0;
+    --gn-bg:rgba(45,212,160,.1);--rd-bg:rgba(240,104,120,.1);--og-bg:rgba(240,170,64,.1);--pp-bg:rgba(159,127,255,.1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+  /* 神聖の光 - ランディングページ */
+  #drop-zone{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;padding:40px;position:relative;overflow:hidden;
+    background:radial-gradient(ellipse at 50% 40%, rgba(159,127,255,.08) 0%, transparent 60%),
+               radial-gradient(ellipse at 20% 80%, rgba(91,127,255,.05) 0%, transparent 50%),
+               var(--bg);
+  }
+  #drop-zone.hidden{display:none}
+  /* 光のリング装飾 */
+  #drop-zone::before{
+    content:'';position:absolute;width:500px;height:500px;border-radius:50%;
+    border:1px solid rgba(159,127,255,.12);top:50%;left:50%;transform:translate(-50%,-55%);
+    pointer-events:none;
+  }
+  #drop-zone::after{
+    content:'';position:absolute;width:320px;height:320px;border-radius:50%;
+    border:1px solid rgba(159,127,255,.18);top:50%;left:50%;transform:translate(-50%,-55%);
+    pointer-events:none;
+  }
+  .dz-logo{font-size:44px;margin-bottom:6px;filter:drop-shadow(0 0 18px rgba(159,127,255,.5));}
+  .dz-sitename{font-size:22px;font-weight:800;letter-spacing:2px;color:var(--pp);
+    text-shadow:0 0 30px rgba(159,127,255,.4);margin-bottom:4px;}
+  .dz-subtitle{font-size:12px;color:var(--dm);letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;}
+  #drop-zone h1{display:none}
+  #drop-zone>p{display:none}
+  .drop-area{
+    width:100%;max-width:420px;
+    border:1px solid rgba(159,127,255,.3);
+    border-radius:16px;padding:44px 32px;text-align:center;cursor:pointer;
+    background:rgba(159,127,255,.04);
+    transition:all .25s;position:relative;z-index:1;
+    box-shadow:0 0 40px rgba(159,127,255,.06);
+  }
+  .drop-area:hover,.drop-area.dragover{
+    border-color:rgba(159,127,255,.6);
+    background:rgba(159,127,255,.08);
+    box-shadow:0 0 60px rgba(159,127,255,.15);
+  }
+  .drop-area .icon{font-size:40px;margin-bottom:12px}
+  .drop-area .label{font-size:15px;font-weight:600}
+  .drop-area .sub{font-size:12px;color:var(--dm);margin-top:6px}
+  #file-input{display:none}
+  #dashboard{display:none;padding:20px;max-width:1500px;margin:0 auto}
+  #dashboard.active{display:block}
+  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+  .header h1{font-size:18px;font-weight:800}
+  .header-meta{display:flex;gap:14px;align-items:center;font-size:12px;color:var(--dm)}
+  .mono{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ac)}
+  .date-bar{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .date-bar label{font-size:13px;color:var(--dm)}
+  .date-bar input[type="date"]{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:6px 10px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px}
+  .btn{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+  .btn:hover{border-color:var(--ac);background:rgba(91,127,255,.08)}
+  .btn-p{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+  .summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:20px}
+  .sc{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px 16px}
+  .sc.alert{border-color:rgba(240,104,120,.4);background:rgba(240,104,120,.04)}
+  .sc .l{font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .sc .v{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace}
+  .sc .sb{font-size:11px;color:var(--dm);margin-top:2px}
+  .tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--bd);overflow-x:auto}
+  .tab{padding:9px 16px;font-size:12px;font-weight:600;color:var(--dm);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;font-family:inherit;background:none;border-top:none;border-left:none;border-right:none}
+  .tab:hover{color:var(--tx)}
+  .tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+  .tc{display:none}.tc.active{display:block}
+  .btn-toggle{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:3px;gap:2px}
+  .btn-toggle button{background:none;border:none;color:var(--dm);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
+  .btn-toggle button.active{background:var(--ac);color:#fff}
+  .btn-toggle button:hover:not(.active){color:var(--tx)}
+  .section{margin-bottom:22px}
+  .stitle{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .note{font-size:11px;color:var(--dm);margin-top:8px;padding:9px 12px;background:var(--s2);border-radius:8px;border-left:3px solid var(--ac)}
+  .tw{overflow-x:auto;border-radius:10px;border:1px solid var(--bd);background:var(--s1)}
+  table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}
+  th{background:var(--s2);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--dm);padding:9px 10px;text-align:right;border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:1}
+  th:first-child,td:first-child{text-align:left;padding-left:14px}
+  td{padding:7px 10px;border-bottom:1px solid rgba(42,48,80,.5);text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;transition:background .1s}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(91,127,255,.03)}
+  .rh{color:var(--gn)}.rm{color:var(--og)}.rl{color:var(--rd)}
+  .tot-row td{background:var(--s2);font-weight:700;border-top:2px solid var(--bd)}
+  td[data-seg]{cursor:pointer;position:relative}
+  td[data-seg]:hover{background:rgba(91,127,255,.15)!important;color:var(--ac)}
+  td[data-seg]::after{content:'ID';position:absolute;right:2px;top:2px;font-size:7px;opacity:0;color:var(--ac);font-family:'JetBrains Mono',monospace;transition:opacity .15s}
+  td[data-seg]:hover::after{opacity:.8}
+  td[data-seg].flash{background:rgba(91,127,255,.28)!important}
+  #id-modal{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center}
+  #id-modal.open{display:flex}
+  #id-modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(3px)}
+  #id-modal-box{position:relative;z-index:1;background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:500px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+  #id-modal-header{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+  #id-modal-title{font-size:14px;font-weight:700}
+  #id-modal-count{font-size:12px;color:var(--cy);font-family:'JetBrains Mono',monospace;margin-top:3px}
+  .modal-close{background:var(--s2);border:1px solid var(--bd);color:var(--dm);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+  .modal-close:hover{color:var(--tx);border-color:var(--ac)}
+  #id-modal-body{flex:1;overflow-y:auto;padding:14px 20px}
+  .fmt-row{display:flex;gap:14px;align-items:center;margin-bottom:10px;font-size:12px;color:var(--dm)}
+  .fmt-row label{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--tx)}
+  .fmt-row input[type=radio]{accent-color:var(--ac)}
+  #id-list{width:100%;height:260px;resize:vertical;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--tx);line-height:1.9;outline:none;cursor:text}
+  #id-list:focus{border-color:var(--ac)}
+  #id-modal-footer{padding:12px 20px;border-top:1px solid var(--bd);display:flex;gap:8px;flex-shrink:0}
+  .mbtn{flex:1;padding:9px 0;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;border:1px solid var(--bd);transition:all .15s}
+  .mbtn.prim{background:var(--ac);border-color:var(--ac);color:#fff}
+  .mbtn.prim:hover{opacity:.85}
+  .mbtn.sec{background:var(--s2);color:var(--tx)}
+  .mbtn.sec:hover{border-color:var(--ac)}
+  .mbtn.ok{background:var(--gn);border-color:var(--gn);color:#000}
+  .h-chart{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  .h-header{display:grid;grid-template-columns:48px 1fr 1fr;background:var(--s2);border-bottom:1px solid var(--bd);padding:8px 14px;font-size:10px;font-weight:600;color:var(--dm);text-transform:uppercase;letter-spacing:.5px}
+  .h-row{display:grid;grid-template-columns:48px 1fr 1fr;padding:4px 14px;border-bottom:1px solid rgba(42,48,80,.4);align-items:center}
+  .h-row:last-child{border-bottom:none}
+  .h-row:hover{background:rgba(91,127,255,.03)}
+  .h-lbl{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dm)}
+  .h-cell{display:flex;align-items:center;gap:6px;padding:2px 6px}
+  .h-track{flex:1;height:11px;background:var(--s3);border-radius:2px;overflow:hidden}
+  .h-fill{height:100%;border-radius:2px}
+  .h-fill.lo{background:var(--gn)}.h-fill.re{background:var(--ac)}
+  .h-num{font-family:'JetBrains Mono',monospace;font-size:11px;width:28px;text-align:right;color:var(--dm)}
+  .h-num.has{color:var(--tx)}
+  .lv-free{color:var(--gn);font-weight:700}.lv-border{color:var(--og);font-weight:700}.lv-paid{color:var(--ac);font-weight:700}.lv-none{color:var(--dm);font-weight:700}
+  .dbadge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:700;vertical-align:middle}
+  .dbadge.free{background:var(--gn-bg);color:var(--gn)}.dbadge.border{background:var(--og-bg);color:var(--og)}.dbadge.paid{background:rgba(91,127,255,.12);color:var(--ac)}
+  .carrier-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+  .c-sb{background:rgba(240,104,120,.12);color:#f06878}.c-dc{background:rgba(251,146,60,.12);color:#fb923c}
+  .c-au{background:rgba(240,170,64,.12);color:#f0aa40}.c-ic{background:rgba(91,127,255,.12);color:#5b7fff}
+  .c-gm{background:rgba(45,212,160,.12);color:#2dd4a0}.c-ym{background:rgba(159,127,255,.12);color:#9f7fff}.c-ot{background:rgba(107,113,148,.12);color:#6b7194}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .sortable{cursor:pointer;user-select:none}.sortable:hover{color:var(--ac)}
+  .sortable.asc::after{content:'▲';display:inline-block;margin-left:3px;font-size:9px}
+  .sortable.desc::after{content:'▼';display:inline-block;margin-left:3px;font-size:9px}
+  .debug-box{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:var(--dm)}
+  .debug-box strong{color:var(--tx)}
+  @media(max-width:900px){.two-col{grid-template-columns:1fr}}
+  @media(max-width:768px){#dashboard{padding:12px}.summary-row{grid-template-columns:repeat(2,1fr)}}
+
+  .act-fbtn{background:var(--s2);border:1px solid var(--bd);color:var(--dm);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s}
+  .act-fbtn.active{background:var(--ac);border-color:var(--ac);color:#fff}
+  .act-fbtn:hover:not(.active){border-color:var(--ac);color:var(--tx)}
+  .act-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;text-align:center;transition:all .15s}
+  .act-card.clickable{cursor:pointer}
+  .act-card.clickable:hover{border-color:var(--ac)}
+  .act-card .av{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace}
+  .act-card .al{font-size:10px;color:var(--dm);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+  .act-card .as{font-size:11px;color:var(--dm);margin-top:2px}
+</style>
+</head>
+<body>
+<div id="drop-zone">
+  <div class="dz-logo">✦</div>
+  <div class="dz-sitename">神聖の光</div>
+  <div class="dz-subtitle">Member Analytics Dashboard</div>
+  <h1>📊 会員分析ダッシュボード</h1>
+  <p>CSVをドロップして即座に分析</p>
+  <div class="drop-area" id="drop-area">
+    <div class="icon" style="font-size:36px;margin-bottom:12px;opacity:.7">☁</div>
+    <div class="label" style="font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px">CSVをドロップ or クリック</div>
+    <div class="sub" style="font-size:11px;color:var(--dm)">Shift_JIS / UTF-8・タブ/カンマ区切り対応</div>
+  </div>
+  <div style="margin-top:20px;font-size:11px;color:var(--dm);opacity:.5;letter-spacing:1px">
+    データはブラウザ内のみで処理されます
+  </div>
+  <input type="file" id="file-input" accept=".csv,.tsv,.txt">
+</div>
+
+<!-- Member ID Modal -->
+<div id="id-modal">
+  <div id="id-modal-backdrop" onclick="closeModal()"></div>
+  <div id="id-modal-box">
+    <div id="id-modal-header">
+      <div>
+        <div id="id-modal-title">会員ID一覧</div>
+        <div id="id-modal-count"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="id-modal-body">
+      <textarea id="id-list" readonly style="width:100%;height:300px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx);resize:vertical;line-height:1.8;outline:none"></textarea>
+    </div>
+    <div id="id-modal-footer">
+      <button class="mbtn prim" id="copy-btn" onclick="copyIDs()">📋 全IDをコピー</button>
+      <button class="mbtn sec" onclick="closeModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="header">
+    <h1>✦ 神聖の光</h1>
+    <div class="header-meta">
+      <span>読込: <span class="mono" id="load-time">-</span></span>
+      <button class="btn" onclick="location.reload()">← 別のCSVを読む</button>
+    </div>
+  </div>
+  <div class="date-bar">
+    <label>対象日:</label>
+    <input type="date" id="target-date">
+    <button class="btn btn-p" onclick="reAnalyze()">再分析</button>
+    <button class="btn" onclick="setToday()">今日</button>
+  </div>
+  <div id="debug-info" class="debug-box"></div>
+  <div class="summary-row" id="summary-cards"></div>
+  <div class="tabs">
+    <button class="tab active" data-tab="today">🔴 今日の状況</button>
+    <button class="tab" data-tab="funnel">① 日別ファネル</button>
+    <button class="tab" data-tab="carrier">② キャリア別リテンション</button>
+    <button class="tab" data-tab="purchase">③ 課金者分析</button>
+    <button class="tab" data-tab="level">④ レベル別詳細</button>
+    <button class="tab" data-tab="adcode">⑤ 広告コード別</button>
+    <button class="tab" data-tab="delivery">⑥ 配信管理</button>
+    <button class="tab" data-tab="activity">⑦ 活動量分析</button>
+  </div>
+  <div class="tc active" id="tab-today">
+    <div class="two-col" style="margin-bottom:20px">
+      <div>
+        <div class="section">
+          <div class="stitle">ログイン → 返信 転換（0〜3日目）<span style="font-size:11px;color:var(--dm);font-weight:400">数字クリック → 会員ID一覧</span></div>
+          <div class="tw"><table>
+            <thead><tr><th>日目</th><th>在籍</th><th>今日ログイン</th><th>率</th><th>うち返信</th><th>転換率</th><th>未返信</th></tr></thead>
+            <tbody id="tb-today-conv"></tbody>
+          </table></div>
+          <div class="note">💡 ログイン率↑・転換率↓ → コンテンツ問題。ログイン率↓ → 配信問題。</div>
+        </div>
+        <div class="section">
+          <div class="stitle">返信停止者（返信経験あり・最終返信2日以上前）</div>
+          <div class="tw"><table>
+            <thead><tr><th>経過日数</th><th>人数</th><th>全体比</th><th>うち今日ログイン</th></tr></thead>
+            <tbody id="tb-stalled"></tbody>
+          </table></div>
+          <div class="note">💡 今日ログインしてるのに返信停止 = 見てるが反応しない。コンテンツが刺さっていない可能性。</div>
+        </div>
+      </div>
+      <div>
+        <div class="section">
+          <div class="stitle">時間帯別 ログイン・返信（今日）</div>
+          <div class="h-chart">
+            <div class="h-header"><span>時</span><span style="color:var(--gn)">■ ログイン</span><span style="color:var(--ac)">■ 返信</span></div>
+            <div id="hourly-rows"></div>
+          </div>
+          <div class="note">💡 ユーザーが動く時間帯に配信を集中させると開封率が上がる。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tc" id="tab-funnel">
+    <div class="section">
+      <div class="note" style="margin-bottom:12px">💡 0〜3日目（Lv2〜5）の当日行動。数字クリック → 会員ID一覧。</div>
+      <div class="tw"><table>
+        <thead><tr><th>日目・区分</th><th>在籍</th><th>今日ログイン</th><th>率</th><th>今日返信</th><th>率</th><th>返信1回(累計)</th><th>返信2-3(累計)</th><th>返信4+(累計)</th><th>返信停止者</th></tr></thead>
+        <tbody id="tb-funnel"></tbody>
+      </table></div>
+      <div class="note">※ 返信回数は全在籍者の累計送信回数。返信停止者＝返信経験ありかつ最終返信2日以上前。</div>
+    </div>
+  </div>
+  <div class="tc" id="tab-carrier">
+    <div class="section">
+      <div class="filter-bar">
+        <div class="btn-toggle" id="carrier-axis-toggle">
+          <button class="active" onclick="setCarrierAxis('login',this)">最終ログイン軸</button>
+          <button onclick="setCarrierAxis('reply',this)">最終返信軸</button>
+        </div>
+        <span id="carrier-axis-note" style="font-size:11px;color:var(--dm)">各キャリアの最終ログインからの経過日数</span>
+      </div>
+      <div class="tw"><table>
+        <thead><tr><th>キャリア</th><th>在籍</th><th>構成比</th><th>今日</th><th>率</th><th>1日</th><th>率</th><th>2〜3日</th><th>率</th><th>4〜7日</th><th>率</th><th>7日超</th><th>率</th></tr></thead>
+        <tbody id="tb-carrier"></tbody>
+      </table></div>
+      <div class="note">💡 特定キャリアの「今日」率が急落 → 配信ブロック・迷惑メール判定の可能性。</div>
+    </div>
+  </div>
+  <div class="tc" id="tab-purchase">
+    <div class="two-col">
+      <div>
+        <div class="section">
+          <div class="stitle">初課金発生レベル分布（全期間）</div>
+          <div class="tw"><table><thead><tr><th>Lv</th><th>日目</th><th>人数</th><th>構成比</th></tr></thead><tbody id="tb-fp-all"></tbody></table></div>
+          <div class="note">💡 初課金が集中するLvの直前が離脱改善ポイント。</div>
+        </div>
+        <div class="section">
+          <div class="stitle">本日の初課金（現在レベル別）</div>
+          <div class="tw"><table><thead><tr><th>Lv</th><th>日目</th><th>人数</th></tr></thead><tbody id="tb-fp-today"></tbody></table></div>
+        </div>
+      </div>
+      <div>
+        <div class="section">
+          <div class="stitle">購入回数分布（全課金者）</div>
+          <div class="tw"><table><thead><tr><th>購入回数</th><th>人数</th><th>構成比</th></tr></thead><tbody id="tb-buycount"></tbody></table></div>
+        </div>
+        <div class="section">
+          <div class="stitle">課金者リテンション（最終行動の経過日数）</div>
+          <div class="tw"><table>
+            <thead><tr><th>経過</th><th>最終ログイン</th><th>率</th><th>最終返信</th><th>率</th><th>最終課金</th><th>率</th></tr></thead>
+            <tbody id="tb-pr"></tbody>
+          </table></div>
+          <div class="note">💡 「7日超」が多い = 離脱課金者。再エンゲージ施策の優先対象。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tc" id="tab-level">
+    <div class="section">
+      <div class="tw"><table>
+        <thead><tr><th>Lv</th><th>区分</th><th>在籍</th><th>ログイン</th><th>率</th><th>返信</th><th>率</th><th>課金</th><th>率</th><th>初課金</th></tr></thead>
+        <tbody id="tb-level"></tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="tc" id="tab-adcode">
+    <div class="section">
+      <div class="stitle">広告コード別 集計<span style="font-size:11px;color:var(--dm);font-weight:400">（ヘッダークリックで並替）</span></div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th class="sortable" data-sort="name">広告コード</th>
+          <th class="sortable" data-sort="t">在籍</th><th class="sortable" data-sort="t_pct">構成比</th>
+          <th class="sortable" data-sort="lo">ログイン</th><th class="sortable" data-sort="lo_r">率</th>
+          <th class="sortable" data-sort="se">返信</th><th class="sortable" data-sort="se_r">率</th>
+          <th class="sortable" data-sort="pu">今日課金</th><th class="sortable" data-sort="pu_r">率</th>
+          <th class="sortable" data-sort="purTotal">累計課金者</th><th class="sortable" data-sort="purTotal_r">率</th>
+          <th class="sortable" data-sort="amount">売上</th><th class="sortable" data-sort="arpu">ARPU</th>
+        </tr></thead>
+        <tbody id="tb-adcode"></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ⑥ 配信管理 -->
+  <div class="tc" id="tab-delivery">
+    <div class="note" style="margin-bottom:14px">💡 一括配信は未ログイン者に送るもの。Lv2＝当日初めてログインした人（0日目相当）が配信の反応数。</div>
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:15px;margin-bottom:14px">
+      <div class="stitle" style="margin-bottom:12px">📤 本日の配信数（手動入力）</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--dm);font-weight:700;margin-bottom:6px">docomo</div>
+          <input type="number" id="del-docomo" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--dm);font-weight:700;margin-bottom:6px">iCloud</div>
+          <input type="number" id="del-icloud" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--og);font-weight:700;margin-bottom:6px">au</div>
+          <input type="number" id="del-au" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--gn);font-weight:700;margin-bottom:6px">Gmail</div>
+          <input type="number" id="del-gmail" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--dm);font-weight:700;margin-bottom:6px">Yahoo</div>
+          <input type="number" id="del-yahoo" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--cy);font-weight:700;margin-bottom:6px">Hotmail / Outlook</div>
+          <input type="number" id="del-hotmail" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px">
+          <div style="font-size:10px;color:var(--dm);font-weight:700;margin-bottom:6px">SoftBank</div>
+          <input type="number" id="del-softbank" value="0" min="0" style="width:100%;background:var(--s3);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+        </div>
+      </div>
+      <button onclick="renderDelivery()" style="background:var(--ac);border:none;color:#fff;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit">計算する</button>
+    </div>
+    <div class="section">
+      <div class="stitle">📊 初回ログイン（Lv2）分析
+        <span style="font-size:11px;color:var(--dm);font-weight:400">Lv2＝当日初回ログイン。返信7+が課金転換の先行指標。</span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>キャリア</th>
+            <th>配信数</th>
+            <th style="color:var(--gn)">初回ログイン</th>
+            <th>反応率</th>
+            <th style="color:var(--ac)">返信あり</th>
+            <th>返信率</th>
+            <th>返信1</th><th>返信2</th><th>返信3</th><th>返信4</th><th>返信5</th><th>返信6</th>
+            <th style="color:var(--gn)">返信7+</th>
+          </tr></thead>
+          <tbody id="tb-delivery"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑦ 活動量分析 -->
+  <div class="tc" id="tab-activity">
+    <!-- static test -->
+    <div id="act-static-test" style="color:#f06878;font-size:18px;padding:20px;background:#1e2233;margin-bottom:12px">⑦ 活動量分析 - ロード済み（静的表示テスト）</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="flex:1;min-width:240px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px">
+        <div class="stitle" style="margin-bottom:8px">📸 スナップショット保存</div>
+        <div style="font-size:11px;color:var(--dm);margin-bottom:10px">現在のCSVをJSON保存。次回読み込みで差分を計算します。（現在ポイントの差分で活動量を計算）</div>
+        <button id="btn-save-snap" onclick="saveSnapshot()" disabled style="background:var(--gn-bg);border:1px solid var(--gn);color:var(--gn);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit">💾 スナップショット保存（日時入りJSON）</button>
+      </div>
+      <div style="flex:1;min-width:240px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px">
+        <div class="stitle" style="margin-bottom:8px">📂 前回スナップショット読み込み</div>
+        <div id="snap-drop" onclick="document.getElementById('input-snap').click()" style="border:2px dashed var(--bd);border-radius:8px;padding:18px;text-align:center;cursor:pointer;font-size:12px;color:var(--dm);transition:all .15s">前回保存したJSONをドロップ or クリック</div>
+        <input type="file" id="input-snap" accept=".json" style="display:none">
+      </div>
+    </div>
+    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="stitle" style="margin-bottom:10px">⚙️ 設定</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--dm)">1通あたり消費pt</label>
+          <input type="number" id="pt-per-msg" value="150" min="1" style="width:70px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+          <span style="font-size:12px;color:var(--dm)">pt／通</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:12px;color:var(--dm)">キャンペーン対象上限</label>
+          <input type="number" id="pt-thresh-hi" value="1000" min="0" style="width:80px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:5px 8px;border-radius:6px;font-size:13px;font-family:'JetBrains Mono',monospace;text-align:right">
+          <span style="font-size:12px;color:var(--dm)">pt以下</span>
+        </div>
+        <button onclick="refreshActivity()" style="background:var(--ac);border:none;color:#fff;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit">適用</button>
+      </div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div class="stitle" style="margin-bottom:10px">🔍 絞り込みフィルター <span style="font-size:10px;color:var(--dm);font-weight:400">ボタンを押すと即反映</span></div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div><div style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">課金状態</div>
+          <div id="act-f-purchase" style="display:flex;gap:4px">
+            <button class="act-fbtn active" data-val="all">全員</button>
+            <button class="act-fbtn" data-val="paid">課金者</button>
+            <button class="act-fbtn" data-val="unpaid">未課金</button>
+          </div></div>
+        <div><div style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">最終ログイン</div>
+          <div id="act-f-login" style="display:flex;gap:4px">
+            <button class="act-fbtn active" data-val="all">全員</button>
+            <button class="act-fbtn" data-val="7">7日以内</button>
+            <button class="act-fbtn" data-val="3">3日以内</button>
+            <button class="act-fbtn" data-val="0">当日</button>
+          </div></div>
+        <div><div style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">返信状態</div>
+          <div id="act-f-reply" style="display:flex;gap:4px">
+            <button class="act-fbtn active" data-val="all">全員</button>
+            <button class="act-fbtn" data-val="yes">返信あり</button>
+            <button class="act-fbtn" data-val="no">返信なし</button>
+          </div></div>
+      </div>
+      <div id="act-filter-summary" style="margin-top:8px;font-size:12px;color:var(--ac);font-family:'JetBrains Mono',monospace"></div>
+    </div>
+    <div class="section">
+      <div class="stitle" style="margin-bottom:10px">💰 現在ポイント状況（キャンペーン対象抽出）</div>
+      <div id="act-pt-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--og)">🎯 キャンペーン対象（ポイント枯渇）</div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th colspan="4">ポイント帯</th>
+                <th style="color:var(--pp)">課金者</th>
+                <th style="color:var(--cy)">未課金</th>
+                <th style="color:var(--og)">合計</th>
+              </tr></thead>
+              <tbody id="tb-act-campaign"></tbody>
+            </table>
+          </div>
+          <div class="note">💡 数字クリックでID抽出→コピー。キャンペーン配信リストに使用可。</div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--dm)">全ポイント帯分布</div>
+          <div class="tw">
+            <table>
+              <thead><tr>
+                <th>ポイント帯</th><th>人数</th><th>構成比</th>
+                <th style="color:var(--pp)">課金者</th>
+                <th style="color:var(--cy)">未課金</th>
+              </tr></thead>
+              <tbody id="tb-act-dist"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="act-diff-section" style="display:none">
+      <div class="section">
+        <div class="stitle">📊 活動量（差分）分析
+          <span id="act-period-label" style="font-size:11px;color:var(--dm);font-weight:400"></span>
+        </div>
+        <div id="act-warn-box" style="display:none;background:var(--rd-bg);border:1px solid rgba(240,104,120,.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--rd)"></div>
+        <div id="act-diff-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--gn)">✅ 活動あり（ポイント消費）</div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>消費ポイント帯</th><th>人数</th><th>推定返信数</th></tr></thead>
+                <tbody id="tb-act-active"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--rd)">❌ 活動なし（消費0）</div>
+            <div class="tw">
+              <table>
+                <thead><tr><th>レベル</th><th>人数</th></tr></thead>
+                <tbody id="tb-act-inactive"></tbody>
+              </table>
+            </div>
+            <div class="note">💡 ログインしてるのに消費0 = コンテンツが刺さっていない可能性。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="act-no-snap" style="padding:24px;text-align:center;color:var(--dm);font-size:12px">
+      📂 前回スナップショット（JSON）を読み込むと活動量差分が表示されます
+    </div>
+  </div>
+</div>
+
+<script>
+const COL={LEVEL:11,EMAIL:3,MEMBER_ID:35,FIRST_LOGIN:20,LAST_LOGIN:21,SEND_COUNT:22,LAST_SEND:23,AD_CODE:26,REG_TIME:27,CUR_PT:10,BUY_AMOUNT:28,BUY_COUNT:29,FIRST_BUY:30,LAST_BUY:31};
+let rawData=[],targetDate=new Date(),analysisResult=null,adcodeData=null,adcodeSortBound=false,carrierAxis='login';
+let idMap={};
+
+function getCarrier(email){
+  if(!email||!email.includes('@'))return 'その他';
+  const d=email.split('@')[1].toLowerCase();
+  if(['i.softbank.jp','softbank.ne.jp'].includes(d)||d.endsWith('.vodafone.ne.jp'))return 'SoftBank';
+  if(d==='docomo.ne.jp')return 'docomo';
+  if(d==='ezweb.ne.jp'||d==='au.com')return 'au';
+  if(['icloud.com','me.com','mac.com'].includes(d))return 'iCloud';
+  if(d==='gmail.com')return 'Gmail';
+  if(['ymobile.ne.jp','ymobile1.ne.jp','uqmobile.jp'].includes(d))return 'Y!mobile/UQ';
+  if(d==='yahoo.co.jp')return 'Yahoo';
+  if(['hotmail.com','hotmail.co.jp','outlook.com','outlook.jp','live.com','live.jp','msn.com'].includes(d))return 'Hotmail';
+  return 'その他';
+}
+const CC={'SoftBank':'c-sb','docomo':'c-dc','au':'c-au','iCloud':'c-ic','Gmail':'c-gm','Y!mobile/UQ':'c-ym','Yahoo':'c-ot','その他':'c-ot'};
+function carrierBadge(c){return`<span class="carrier-badge ${CC[c]||'c-ot'}">${c}</span>`}
+function dayLabel(lv){const n=parseInt(lv);if(isNaN(n))return'ステップ';if(n===1)return'未ログイン';if(n===2)return'0日目';if(n===3)return'1日目';if(n===4)return'2日目';if(n===5)return'3日目';return(n-2)+'日目'}
+function lvSection(lv){
+  const n=parseInt(lv);if(isNaN(n))return'ステップ';
+  const DAY={2:'0日目',3:'1日目',4:'2日目',5:'3日目',6:'4日目',7:'5日目',8:'6日目',9:'7日目',10:'8日目',11:'9日目',12:'10日目',13:'11日目',14:'12日目',15:'13日目',16:'14日目',17:'15日目',18:'16日目',19:'17日目',20:'18日目',21:'19日目',22:'20日目',23:'21日目',24:'22日目',25:'配信停止'};
+  const day=DAY[n]?`<span style="font-size:10px;color:var(--dm);margin-left:5px">${DAY[n]}</span>`:'';
+  if(n===1)return'<span style="color:var(--dm)">未ログイン</span>';
+  if(n===25)return`<span style="color:var(--rd);font-weight:700">配信停止</span>`;
+  if(n<=4)return`無料<span class="dbadge free">FREE</span>${day}`;
+  if(n===5)return`一部有料<span class="dbadge border">HALF</span>${day}`;
+  return`有料<span class="dbadge paid">PAID</span>${day}`;
+}
+function lvClass(lv){const n=parseInt(lv);if(isNaN(n))return'';if(n===1)return'lv-none';if(n<=4)return'lv-free';if(n===5)return'lv-border';return'lv-paid'}
+function sortLv(keys){return[...keys].sort((a,b)=>{const na=parseInt(a),nb=parseInt(b);if(!isNaN(na)&&!isNaN(nb))return na-nb;if(!isNaN(na))return-1;if(!isNaN(nb))return 1;return a.localeCompare(b,'ja')})}
+function tsToDate(ts){if(!ts)return null;const v=String(ts).trim();if(!v||v==='0')return null;const n=parseInt(v);if(isNaN(n)||n===0)return null;return new Date(n*1000)}
+function toJST(d){if(!d)return null;const j=new Date(d.getTime()+9*3600000);return{y:j.getUTCFullYear(),m:j.getUTCMonth(),d:j.getUTCDate(),h:j.getUTCHours()}}
+function sameDay(d1,d2){if(!d1||!d2)return false;const a=toJST(d1),b=toJST(d2);if(!a||!b)return false;return a.y===b.y&&a.m===b.m&&a.d===b.d}
+function daysDiff(from,to){if(!from||!to)return Infinity;const a=toJST(from),b=toJST(to);if(!a||!b)return Infinity;return Math.floor((Date.UTC(b.y,b.m,b.d)-Date.UTC(a.y,a.m,a.d))/86400000)}
+function jstDateStr(date){const j=toJST(date);if(!j)return'';return`${j.y}-${String(j.m+1).padStart(2,'0')}-${String(j.d).padStart(2,'0')}`}
+function rc(r){return r>=50?'rh':r>=25?'rm':'rl'}
+function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'0.0%'}
+function pctN(n,t){return t>0?n/t*100:0}
+function gapBucket(g){if(!isFinite(g)||g<0)return'over7';if(g===0)return'today';if(g===1)return'd1';if(g<=3)return'd3';if(g<=7)return'd7';return'over7'}
+
+function tdSeg(cnt,seg,lbl,cls=''){
+  if(cnt===0)return`<td${cls?' class="'+cls+'"':''}>-</td>`;
+  return`<td${cls?' class="'+cls+'"':''} data-seg="${seg}" data-lbl="${lbl}" title="クリックで会員ID一覧">${cnt.toLocaleString()}</td>`;
+}
+function tdR(n,t,cls=''){return`<td class="${rc(pctN(n,t))}${cls?' '+cls:''}">${pct(n,t)}</td>`}
+function reg(seg,id){if(!idMap[seg])idMap[seg]=[];if(id)idMap[seg].push(id)}
+
+function detectSep(line){return(line.match(/\t/g)||[]).length>(line.match(/,/g)||[]).length?'\t':','}
+function parseCSV(text){
+  const hi=text.indexOf('\n');if(hi<0)return null;
+  const hl=text.substring(0,hi).replace(/\r$/,'');
+  const sep=detectSep(hl);const hc=hl.split(sep).length;
+  const rows=[];let i=hi+1;const len=text.length;
+  while(i<len){
+    const row=[];let f='',inQ=false;
+    while(i<len){
+      const ch=text[i];
+      if(inQ){if(ch==='"'){if(i+1<len&&text[i+1]==='"'){f+='"';i+=2}else{inQ=false;i++}}else{f+=ch;i++}}
+      else{if(ch==='"'){inQ=true;i++}else if(ch===sep){row.push(f);f='';i++}else if(ch==='\r'){i++}else if(ch==='\n'){i++;break}else{f+=ch;i++}}
+    }
+    row.push(f);
+    if(row.length>=Math.min(hc,COL.LAST_BUY+1))rows.push(row);
+  }
+  return{rows,sep,headerCols:hc,headerLine:hl};
+}
+
+function analyze(rows,target){
+  idMap={};
+  const levels={},carriers={},adcodes={};
+  const funnel={};for(let d=0;d<=3;d++)funnel[d]={total:0,loginToday:0,replyToday:0,dist1:0,dist23:0,dist4p:0,stalled:0};
+  const todayConv={};
+  const hourlyLogin=Array(24).fill(0),hourlyReply=Array(24).fill(0);
+  const stalledB={d2:0,d3:0,d7:0,over7:0},stalledLT={d2:0,d3:0,d7:0,over7:0};
+  const pur={total:0,totalAmount:0,byCount:{'1回':0,'2〜5回':0,'6〜10回':0,'11回+':0},ret:{login:{today:0,d1:0,d3:0,d7:0,over7:0},send:{today:0,d1:0,d3:0,d7:0,over7:0},buy:{today:0,d1:0,d3:0,d7:0,over7:0}},fpByLv:{}};
+  let total=0,totalAmountAll=0;
+
+  rows.forEach(row=>{
+    const lv=(row[COL.LEVEL]||'').trim();if(!lv)return;
+    const mid=(row[COL.MEMBER_ID]||'').trim()||'?';
+    const carrier=getCarrier(row[COL.EMAIL]);
+    const ad=(row[COL.AD_CODE]||'').trim()||'(なし)';
+    total++;
+    if(!levels[lv])levels[lv]={t:0,lo:0,se:0,pu:0,fb:0};
+    if(!carriers[carrier])carriers[carrier]={t:0,lr0:0,lr1:0,lr23:0,lr47:0,lr7p:0,rr0:0,rr1:0,rr23:0,rr47:0,rr7p:0};
+    if(!adcodes[ad])adcodes[ad]={t:0,lo:0,se:0,pu:0,amount:0,purTotal:0};
+    levels[lv].t++;carriers[carrier].t++;adcodes[ad].t++;
+    reg(`lv:${lv}:all`,mid);reg(`carrier:${carrier}:all`,mid);reg(`ad:${ad}:all`,mid);
+
+    const ll=tsToDate(row[COL.LAST_LOGIN]),ls=tsToDate(row[COL.LAST_SEND]),lb=tsToDate(row[COL.LAST_BUY]),fb=tsToDate(row[COL.FIRST_BUY]),rd=tsToDate(row[COL.REG_TIME]);
+    const sendCount=parseInt(row[COL.SEND_COUNT])||0,buyCount=parseInt(row[COL.BUY_COUNT])||0,buyAmount=parseFloat(row[COL.BUY_AMOUNT])||0;
+    const isLogin=sameDay(ll,target),isSend=sameDay(ls,target),isBuy=sameDay(lb,target),isFirstBuy=sameDay(fb,target);
+
+    if(isLogin){levels[lv].lo++;adcodes[ad].lo++;reg(`lv:${lv}:login`,mid);reg(`ad:${ad}:login`,mid);}
+    if(isSend){levels[lv].se++;adcodes[ad].se++;reg(`lv:${lv}:reply`,mid);reg(`ad:${ad}:reply`,mid);}
+    if(isBuy){levels[lv].pu++;adcodes[ad].pu++;reg(`lv:${lv}:purchase`,mid);reg(`ad:${ad}:purchase`,mid);}
+    if(isFirstBuy){levels[lv].fb++;reg(`lv:${lv}:firstbuy`,mid);}
+    adcodes[ad].amount+=buyAmount;
+    if(buyCount>0||buyAmount>0)adcodes[ad].purTotal++;
+    totalAmountAll+=buyAmount;
+
+    const lGap=daysDiff(ll,target),sGap=daysDiff(ls,target);
+    const cr=carriers[carrier];
+    const lbk=lGap===0?'lr0':lGap===1?'lr1':lGap<=3?'lr23':lGap<=7?'lr47':'lr7p';
+    cr[lbk]++;reg(`carrier:${carrier}:${lbk}`,mid);
+    if(sendCount>0){const rbk=sGap===0?'rr0':sGap===1?'rr1':sGap<=3?'rr23':sGap<=7?'rr47':'rr7p';cr[rbk]++;reg(`carrier:${carrier}:${rbk}`,mid);}
+
+    const lvN=parseInt(lv);
+    if(!isNaN(lvN)&&lvN>=2&&lvN<=5){
+      const day=lvN-2;const f=funnel[day];
+      f.total++;reg(`fn:${day}:all`,mid);
+      if(isLogin){f.loginToday++;reg(`fn:${day}:login`,mid);}
+      if(isSend){f.replyToday++;reg(`fn:${day}:reply`,mid);}
+      if(sendCount===1){f.dist1++;reg(`fn:${day}:d1`,mid);}
+      else if(sendCount<=3){f.dist23++;reg(`fn:${day}:d23`,mid);}
+      else if(sendCount>=4){f.dist4p++;reg(`fn:${day}:d4p`,mid);}
+      if(sendCount>0&&sGap>=2){f.stalled++;reg(`fn:${day}:stalled`,mid);}
+      if(!todayConv[lv])todayConv[lv]={total:0,loginToday:0,bothToday:0};
+      todayConv[lv].total++;
+      if(isLogin){todayConv[lv].loginToday++;reg(`conv:${lv}:login`,mid);if(isSend){todayConv[lv].bothToday++;reg(`conv:${lv}:both`,mid);}else{reg(`conv:${lv}:noreply`,mid);}}
+    }
+    if(isLogin){const jl=toJST(ll);if(jl)hourlyLogin[jl.h]++;}
+    if(isSend){const js=toJST(ls);if(js)hourlyReply[js.h]++;}
+    if(sendCount>0&&isFinite(sGap)&&sGap>=2){
+      const bk=sGap===2?'d2':sGap===3?'d3':sGap<=7?'d7':'over7';
+      stalledB[bk]++;reg(`stalled:${bk}:all`,mid);
+      if(isLogin){stalledLT[bk]++;reg(`stalled:${bk}:login`,mid);}
+    }
+    if(buyCount>0||buyAmount>0){
+      pur.total++;pur.totalAmount+=buyAmount;
+      if(buyCount<=1)pur.byCount['1回']++;else if(buyCount<=5)pur.byCount['2〜5回']++;else if(buyCount<=10)pur.byCount['6〜10回']++;else pur.byCount['11回+']++;
+      const lgbk=gapBucket(lGap),sgbk=gapBucket(sGap),bgbk=gapBucket(daysDiff(lb,target));
+      pur.ret.login[lgbk]++;pur.ret.send[sgbk]++;pur.ret.buy[bgbk]++;
+      reg(`pur:ret:login:${lgbk}`,mid);reg(`pur:ret:send:${sgbk}`,mid);reg(`pur:ret:buy:${bgbk}`,mid);
+    }
+    if(fb&&rd){const dd=Math.max(0,daysDiff(rd,fb));const el=dd+2;const lab=el>25?'Lv26+':String(el);pur.fpByLv[lab]=(pur.fpByLv[lab]||0)+1;reg(`pur:fp:lv:${lab}`,mid);}
+  });
+  return{levels,carriers,adcodes,funnel,todayConv,hourlyLogin,hourlyReply,stalledB,stalledLT,pur,total,totalAmountAll};
+}
+
+function render(res){
+  analysisResult=res;
+  const{levels,carriers,adcodes,funnel,todayConv,hourlyLogin,hourlyReply,stalledB,stalledLT,pur,total,totalAmountAll}=res;
+  const lvKeys=sortLv(Object.keys(levels));
+  let tL=0,tS=0,tP=0,tFB=0;
+  lvKeys.forEach(k=>{const d=levels[k];tL+=d.lo;tS+=d.se;tP+=d.pu;tFB+=d.fb});
+  const stalledTotal=Object.values(stalledB).reduce((a,b)=>a+b,0);
+  const conv={login:0,both:0};
+  [2,3,4,5].forEach(n=>{const k=String(n);if(todayConv[k]){conv.login+=todayConv[k].loginToday;conv.both+=todayConv[k].bothToday;}});
+
+  document.getElementById('summary-cards').innerHTML=`
+    <div class="sc"><div class="l">総会員</div><div class="v">${total.toLocaleString()}</div></div>
+    <div class="sc"><div class="l">本日ログイン</div><div class="v" style="color:var(--gn)">${tL.toLocaleString()}</div><div class="sb">${pct(tL,total)}</div></div>
+    <div class="sc"><div class="l">本日返信</div><div class="v" style="color:var(--ac)">${tS.toLocaleString()}</div><div class="sb">${pct(tS,total)}</div></div>
+    <div class="sc"><div class="l">ログイン→返信率</div><div class="v" style="color:var(--cy)">${pct(conv.both,conv.login)}</div><div class="sb">0-3日目</div></div>
+    <div class="sc"><div class="l">本日課金</div><div class="v" style="color:var(--og)">${tP.toLocaleString()}</div></div>
+    <div class="sc"><div class="l">本日初課金</div><div class="v" style="color:var(--pp)">${tFB.toLocaleString()}</div></div>
+    <div class="sc${stalledTotal>0?' alert':''}"><div class="l">返信停止者</div><div class="v" style="color:var(--rd)">${stalledTotal.toLocaleString()}</div><div class="sb">2日以上返信なし</div></div>
+    <div class="sc"><div class="l">累計売上</div><div class="v" style="color:var(--og);font-size:18px">¥${Math.round(totalAmountAll).toLocaleString()}</div></div>`;
+
+  const dayNames=['0日目（無料）','1日目（無料）','2日目（無料）','3日目（一部有料）'];
+  let ct={total:0,loginToday:0,bothToday:0};
+  const ctRows=[2,3,4,5].map(n=>{
+    const k=String(n);const d=todayConv[k]||{total:0,loginToday:0,bothToday:0};
+    ct.total+=d.total;ct.loginToday+=d.loginToday;ct.bothToday+=d.bothToday;
+    const noR=d.loginToday-d.bothToday;
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${dayNames[n-2]}</td>
+    ${tdSeg(d.total,`lv:${k}:all`,`Lv${k} 全在籍`)}
+    ${tdSeg(d.loginToday,`conv:${k}:login`,`Lv${k} 今日ログイン`)}${tdR(d.loginToday,d.total)}
+    ${tdSeg(d.bothToday,`conv:${k}:both`,`Lv${k} ログイン後返信`,'rh')}${tdR(d.bothToday,d.loginToday)}
+    ${tdSeg(noR,`conv:${k}:noreply`,`Lv${k} ログインしたが未返信`,'rl')}</tr>`;
+  });
+  ctRows.push(`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td><td>${ct.total.toLocaleString()}</td><td>${ct.loginToday.toLocaleString()}</td>${tdR(ct.loginToday,ct.total)}<td style="color:var(--gn)">${ct.bothToday.toLocaleString()}</td>${tdR(ct.bothToday,ct.loginToday)}<td style="color:var(--rd)">${(ct.loginToday-ct.bothToday).toLocaleString()}</td></tr>`);
+  document.getElementById('tb-today-conv').innerHTML=ctRows.join('');
+
+  const sLbls=[['d2','2日'],['d3','3日'],['d7','4〜7日'],['over7','7日超']];
+  document.getElementById('tb-stalled').innerHTML=sLbls.map(([k,lbl])=>{
+    const cnt=stalledB[k]||0;const lt=stalledLT[k]||0;
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${lbl}</td>${tdSeg(cnt,`stalled:${k}:all`,`返信停止 ${lbl}`)}${tdR(cnt,total)}${tdSeg(lt,`stalled:${k}:login`,`返信停止 ${lbl} 今日ログイン`,'rm')}</tr>`;
+  }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td><td>${stalledTotal.toLocaleString()}</td><td>${pct(stalledTotal,total)}</td><td>-</td></tr>`;
+
+  const maxH=Math.max(...hourlyLogin,...hourlyReply,1);
+  const hRows=[];
+  for(let h=0;h<24;h++){const l=hourlyLogin[h],r=hourlyReply[h];if(l===0&&r===0)continue;
+    hRows.push(`<div class="h-row"><span class="h-lbl">${String(h).padStart(2,'0')}時</span><div class="h-cell"><div class="h-track"><div class="h-fill lo" style="width:${(l/maxH*100).toFixed(0)}%"></div></div><span class="h-num ${l>0?'has':''}">${l}</span></div><div class="h-cell"><div class="h-track"><div class="h-fill re" style="width:${(r/maxH*100).toFixed(0)}%"></div></div><span class="h-num ${r>0?'has':''}">${r}</span></div></div>`);
+  }
+  document.getElementById('hourly-rows').innerHTML=hRows.length?hRows.join(''):'<div style="padding:24px;text-align:center;color:var(--dm);font-size:13px">本日のアクティビティなし</div>';
+
+  const fDays=['0日目（無料）','1日目（無料）','2日目（無料）','3日目（一部有料）'];
+  let ft={total:0,loginToday:0,replyToday:0,dist1:0,dist23:0,dist4p:0,stalled:0};
+  const fRows=[0,1,2,3].map(day=>{
+    const f=funnel[day];Object.keys(ft).forEach(k=>ft[k]+=f[k]);
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${fDays[day]}</td>
+    ${tdSeg(f.total,`fn:${day}:all`,`${fDays[day]} 全在籍`)}
+    ${tdSeg(f.loginToday,`fn:${day}:login`,`${fDays[day]} 今日ログイン`)}${tdR(f.loginToday,f.total)}
+    ${tdSeg(f.replyToday,`fn:${day}:reply`,`${fDays[day]} 今日返信`)}${tdR(f.replyToday,f.total)}
+    ${tdSeg(f.dist1,`fn:${day}:d1`,`${fDays[day]} 累計1回`)}
+    ${tdSeg(f.dist23,`fn:${day}:d23`,`${fDays[day]} 累計2〜3回`)}
+    ${tdSeg(f.dist4p,`fn:${day}:d4p`,`${fDays[day]} 累計4回+`)}
+    ${tdSeg(f.stalled,`fn:${day}:stalled`,`${fDays[day]} 返信停止者`,'rl')}</tr>`;
+  });
+  fRows.push(`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td><td>${ft.total.toLocaleString()}</td><td>${ft.loginToday.toLocaleString()}</td>${tdR(ft.loginToday,ft.total)}<td>${ft.replyToday.toLocaleString()}</td>${tdR(ft.replyToday,ft.total)}<td>${ft.dist1.toLocaleString()}</td><td>${ft.dist23.toLocaleString()}</td><td>${ft.dist4p.toLocaleString()}</td><td style="color:var(--rd)">${ft.stalled||'-'}</td></tr>`);
+  document.getElementById('tb-funnel').innerHTML=fRows.join('');
+
+  renderCarrier(carrierAxis);
+
+  const fpK=sortLv(Object.keys(pur.fpByLv));const fpT=fpK.reduce((s,k)=>s+(pur.fpByLv[k]||0),0);
+  document.getElementById('tb-fp-all').innerHTML=fpK.map(k=>{const cnt=pur.fpByLv[k];return`<tr><td class="${lvClass(k)}">${k}</td><td style="font-size:11px;color:var(--dm);font-family:'Noto Sans JP',sans-serif">${dayLabel(k)}</td>${tdSeg(cnt,`pur:fp:lv:${k}`,`初課金 ${k}`)}<td>${pct(cnt,fpT)}</td></tr>`;}).join('');
+  const fpTK=sortLv(lvKeys.filter(k=>levels[k].fb>0));
+  document.getElementById('tb-fp-today').innerHTML=fpTK.length===0?'<tr><td colspan="3" style="color:var(--dm);text-align:center;padding:20px">本日の初課金なし</td></tr>':fpTK.map(k=>`<tr><td class="${lvClass(k)}">${k}</td><td style="font-size:11px;color:var(--dm);font-family:'Noto Sans JP',sans-serif">${dayLabel(k)}</td>${tdSeg(levels[k].fb,`lv:${k}:firstbuy`,`Lv${k} 本日初課金`,'rh')}</tr>`).join('');
+  const bcK=['1回','2〜5回','6〜10回','11回+'];const bcT=bcK.reduce((s,k)=>s+(pur.byCount[k]||0),0);
+  document.getElementById('tb-buycount').innerHTML=bcK.map(k=>{const cnt=pur.byCount[k]||0;return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${k}</td><td>${cnt.toLocaleString()}</td><td>${pct(cnt,bcT)}</td></tr>`;}).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td><td>${bcT.toLocaleString()}</td><td>100%</td></tr>`;
+  const rL=[['today','今日'],['d1','1日'],['d3','2〜3日'],['d7','4〜7日'],['over7','7日超']];
+  document.getElementById('tb-pr').innerHTML=rL.map(([k,lbl])=>{
+    const lc=pur.ret.login[k]||0,sc=pur.ret.send[k]||0,bc=pur.ret.buy[k]||0;
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${lbl}</td>${tdSeg(lc,`pur:ret:login:${k}`,`課金者 最終ログイン ${lbl}`)}${tdR(lc,pur.total)}${tdSeg(sc,`pur:ret:send:${k}`,`課金者 最終返信 ${lbl}`)}${tdR(sc,pur.total)}${tdSeg(bc,`pur:ret:buy:${k}`,`課金者 最終課金 ${lbl}`)}${tdR(bc,pur.total)}</tr>`;
+  }).join('');
+
+  let tPu=0;lvKeys.forEach(k=>tPu+=levels[k].pu);
+  document.getElementById('tb-level').innerHTML=lvKeys.map(k=>{const d=levels[k];return`<tr><td class="${lvClass(k)}" style="font-weight:700">${k}</td><td style="font-size:11px;font-family:'Noto Sans JP',sans-serif">${lvSection(k)}</td>${tdSeg(d.t,`lv:${k}:all`,`Lv${k} 全在籍`)}${tdSeg(d.lo,`lv:${k}:login`,`Lv${k} 本日ログイン`)}${tdR(d.lo,d.t)}${tdSeg(d.se,`lv:${k}:reply`,`Lv${k} 本日返信`)}${tdR(d.se,d.t)}${tdSeg(d.pu,`lv:${k}:purchase`,`Lv${k} 本日課金`)}${tdR(d.pu,d.t)}${d.fb>0?tdSeg(d.fb,`lv:${k}:firstbuy`,`Lv${k} 本日初課金`,'rh'):'<td style="color:var(--dm)">-</td>'}</tr>`;}).join('')+`<tr class="tot-row"><td colspan="2" style="font-family:'Noto Sans JP',sans-serif;text-align:center">合計</td><td>${total.toLocaleString()}</td><td>${tL.toLocaleString()}</td>${tdR(tL,total)}<td>${tS.toLocaleString()}</td>${tdR(tS,total)}<td>${tPu.toLocaleString()}</td>${tdR(tPu,total)}<td style="color:var(--pp)">${tFB.toLocaleString()}</td></tr>`;
+
+  adcodeData=adcodes;
+  document.querySelectorAll('#tab-adcode .sortable').forEach(t=>t.classList.remove('asc','desc'));
+  const iT=document.querySelector('#tab-adcode .sortable[data-sort="t"]');if(iT)iT.classList.add('desc');
+  renderAdCode('t','desc');
+  if(!adcodeSortBound){adcodeSortBound=true;document.querySelectorAll('#tab-adcode .sortable').forEach(th=>{th.addEventListener('click',()=>{const col=th.dataset.sort;const wd=th.classList.contains('desc');document.querySelectorAll('#tab-adcode .sortable').forEach(t=>t.classList.remove('asc','desc'));const dir=wd?'asc':'desc';th.classList.add(dir);renderAdCode(col,dir);});});}
+}
+
+function renderCarrier(axis){
+  if(!analysisResult)return;
+  const{carriers}=analysisResult;
+  const cKeys=Object.keys(carriers).sort((a,b)=>carriers[b].t-carriers[a].t);
+  const px=axis==='login'?'lr':'rr';
+  const sfx=['0','1','23','47','7p'];
+  const bLbl={'0':'今日','1':'1日','23':'2〜3日','47':'4〜7日','7p':'7日超'};
+  const cTot={t:0};sfx.forEach(s=>cTot[px+s]=0);
+  cKeys.forEach(k=>{const d=carriers[k];cTot.t+=d.t;sfx.forEach(s=>cTot[px+s]+=(d[px+s]||0));});
+  const rows=cKeys.map(k=>{
+    const d=carriers[k];
+    return`<tr><td>${carrierBadge(k)}</td>${tdSeg(d.t,`carrier:${k}:all`,`${k} 全在籍`)}<td>${pct(d.t,cTot.t)}</td>${sfx.map(s=>{const cnt=d[px+s]||0;const base=axis==='login'?d.t:(sfx.reduce((a,x)=>a+(d[px+x]||0),0))||1;return tdSeg(cnt,`carrier:${k}:${px}${s}`,`${k} 最終${axis==='login'?'ログイン':'返信'} ${bLbl[s]}`)+tdR(cnt,base);}).join('')}</tr>`;
+  });
+  const cr0=cTot[px+'0'],cr1=cTot[px+'1'],cr23=cTot[px+'23'],cr47=cTot[px+'47'],cr7p=cTot[px+'7p'];
+  const cbase=axis==='login'?cTot.t:(cr0+cr1+cr23+cr47+cr7p)||1;
+  rows.push(`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td><td>${cTot.t.toLocaleString()}</td><td>100%</td><td class="${rc(pctN(cr0,cbase))}">${cr0.toLocaleString()}</td><td class="${rc(pctN(cr0,cbase))}">${pct(cr0,cbase)}</td><td>${cr1.toLocaleString()}</td><td>${pct(cr1,cbase)}</td><td>${cr23.toLocaleString()}</td><td>${pct(cr23,cbase)}</td><td>${cr47.toLocaleString()}</td><td>${pct(cr47,cbase)}</td><td style="color:var(--rd)">${cr7p.toLocaleString()}</td><td style="color:var(--rd)">${pct(cr7p,cbase)}</td></tr>`);
+  document.getElementById('tb-carrier').innerHTML=rows.join('');
+}
+function setCarrierAxis(axis,btn){carrierAxis=axis;document.querySelectorAll('#carrier-axis-toggle button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById('carrier-axis-note').textContent=axis==='login'?'各キャリアの最終ログインからの経過日数':'各キャリアの最終返信からの経過日数（返信経験者のみ）';renderCarrier(axis);}
+
+function renderAdCode(sortCol,dir){
+  if(!adcodeData)return;
+  const keys=Object.keys(adcodeData);
+  const aT={t:0,lo:0,se:0,pu:0,amount:0,purTotal:0};keys.forEach(k=>{const d=adcodeData[k];aT.t+=d.t;aT.lo+=d.lo;aT.se+=d.se;aT.pu+=d.pu;aT.amount+=d.amount;aT.purTotal+=d.purTotal});
+  const sorted=[...keys].sort((a,b)=>{const da=adcodeData[a],db=adcodeData[b];if(sortCol==='name')return dir==='asc'?a.localeCompare(b):b.localeCompare(a);let va,vb;if(sortCol==='t'||sortCol==='t_pct'){va=da.t;vb=db.t}else if(sortCol==='lo'){va=da.lo;vb=db.lo}else if(sortCol==='lo_r'){va=da.t?da.lo/da.t:0;vb=db.t?db.lo/db.t:0}else if(sortCol==='se'){va=da.se;vb=db.se}else if(sortCol==='se_r'){va=da.t?da.se/da.t:0;vb=db.t?db.se/db.t:0}else if(sortCol==='pu'){va=da.pu;vb=db.pu}else if(sortCol==='pu_r'){va=da.t?da.pu/da.t:0;vb=db.t?db.pu/db.t:0}else if(sortCol==='purTotal'){va=da.purTotal;vb=db.purTotal}else if(sortCol==='purTotal_r'){va=da.t?da.purTotal/da.t:0;vb=db.t?db.purTotal/db.t:0}else if(sortCol==='amount'){va=da.amount;vb=db.amount}else if(sortCol==='arpu'){va=da.t?da.amount/da.t:0;vb=db.t?db.amount/db.t:0}else{va=da.t;vb=db.t}return dir==='asc'?va-vb:vb-va;});
+  function fmtAmt(v){return v===0?'-':'¥'+Math.round(v).toLocaleString()}
+  function fmtArpu(v,t){return t===0||v===0?'-':'¥'+Math.round(v/t).toLocaleString()}
+  document.getElementById('tb-adcode').innerHTML=sorted.map(k=>{const d=adcodeData[k];return`<tr><td style="font-size:11px;max-width:220px;overflow:hidden;text-overflow:ellipsis;font-family:'Noto Sans JP',sans-serif" title="${k}">${k}</td>${tdSeg(d.t,`ad:${k}:all`,`[${k}] 全在籍`)}<td>${pct(d.t,aT.t)}</td>${tdSeg(d.lo,`ad:${k}:login`,`[${k}] 本日ログイン`)}${tdR(d.lo,d.t)}${tdSeg(d.se,`ad:${k}:reply`,`[${k}] 本日返信`)}${tdR(d.se,d.t)}${tdSeg(d.pu,`ad:${k}:purchase`,`[${k}] 本日課金`)}${tdR(d.pu,d.t)}<td style="color:${d.purTotal>0?'var(--pp)':'var(--dm)'};font-weight:${d.purTotal>0?'700':'400'}">${d.purTotal>0?d.purTotal.toLocaleString():'-'}</td><td class="${rc(pctN(d.purTotal,d.t))}">${pct(d.purTotal,d.t)}</td><td style="color:${d.amount>0?'var(--og)':'var(--dm)'};font-weight:${d.amount>0?'700':'400'}">${fmtAmt(d.amount)}</td><td style="color:var(--dm)">${fmtArpu(d.amount,d.t)}</td></tr>`;}).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td><td>${aT.t.toLocaleString()}</td><td>100%</td><td>${aT.lo.toLocaleString()}</td>${tdR(aT.lo,aT.t)}<td>${aT.se.toLocaleString()}</td>${tdR(aT.se,aT.t)}<td>${aT.pu.toLocaleString()}</td>${tdR(aT.pu,aT.t)}<td style="color:var(--pp);font-weight:700">${aT.purTotal.toLocaleString()}</td><td class="${rc(pctN(aT.purTotal,aT.t))}">${pct(aT.purTotal,aT.t)}</td><td style="color:var(--og);font-weight:700">${fmtAmt(aT.amount)}</td><td style="color:var(--dm)">${fmtArpu(aT.amount,aT.t)}</td></tr>`;
+}
+
+// Modal
+let modalIDs=[];
+function openModal(seg,lbl){
+  modalIDs=idMap[seg]||[];
+  document.getElementById('id-modal-title').textContent=lbl;
+  document.getElementById('id-modal-count').textContent=`${modalIDs.length.toLocaleString()} 件`;
+  updateIDList();
+  const btn=document.getElementById('copy-btn');btn.textContent='📋 全IDをコピー';btn.className='mbtn prim';
+  document.getElementById('id-modal').classList.add('open');
+}
+function updateIDList(){
+  document.getElementById('id-list').value=modalIDs.join('\n');
+}
+function closeModal(){document.getElementById('id-modal').classList.remove('open')}
+function copyIDs(){
+  navigator.clipboard.writeText(document.getElementById('id-list').value).then(()=>{
+    const btn=document.getElementById('copy-btn');btn.textContent='✅ コピーしました！';btn.className='mbtn ok';
+    setTimeout(()=>{btn.textContent='📋 全IDをコピー';btn.className='mbtn prim';},2200);
+  });
+}
+document.querySelectorAll('input[name="fmt"]').forEach(r=>r.addEventListener('change',updateIDList));
+document.addEventListener('click',e=>{
+  const td=e.target.closest('td[data-seg]');if(!td)return;
+  td.classList.add('flash');setTimeout(()=>td.classList.remove('flash'),300);
+  openModal(td.dataset.seg,td.dataset.lbl||td.dataset.seg);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+function reAnalyze(){const v=document.getElementById('target-date').value;if(!v)return;const[y,m,d]=v.split('-').map(Number);targetDate=new Date(Date.UTC(y,m-1,d));render(analyze(rawData,targetDate))}
+function setToday(){const now=new Date();document.getElementById('target-date').value=jstDateStr(now);targetDate=now;render(analyze(rawData,targetDate))}
+
+function processText(text){
+  const parsed=parseCSV(text);if(!parsed||parsed.rows.length===0){alert('データが読み取れませんでした。');return}
+  rawData=parsed.rows;const now=new Date();targetDate=now;
+  document.getElementById('target-date').value=jstDateStr(now);
+  document.getElementById('load-time').textContent=now.toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
+  const j=toJST(now);const todayStr=`${j.y}/${j.m+1}/${j.d}`;
+  let dbL=0,dbS=0,dbB=0;
+  rawData.forEach(r=>{if(sameDay(tsToDate(r[COL.LAST_LOGIN]),targetDate))dbL++;if(sameDay(tsToDate(r[COL.LAST_SEND]),targetDate))dbS++;if(sameDay(tsToDate(r[COL.LAST_BUY]),targetDate))dbB++;});
+  document.getElementById('debug-info').innerHTML=`<strong>基本:</strong> 列数=${parsed.headerCols} 行数=${rawData.length.toLocaleString()} 対象日=${todayStr} | <strong>今日該当:</strong> ログイン=${dbL} 返信=${dbS} 課金=${dbB}`;
+  document.getElementById('drop-zone').classList.add('hidden');
+  document.getElementById('dashboard').classList.add('active');
+  render(analyze(rawData,targetDate));
+  activateActivityTab();
+}
+function handleFile(file){const r=new FileReader();r.onload=e=>{const u8=new Uint8Array(e.target.result);let text=new TextDecoder('utf-8').decode(u8);if(text.includes('\uFFFD')){try{text=new TextDecoder('shift_jis').decode(u8)}catch(err){}}processText(text)};r.readAsArrayBuffer(file);}
+
+const dropArea=document.getElementById('drop-area'),fileInput=document.getElementById('file-input'),dropZone=document.getElementById('drop-zone');
+dropArea.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0])});
+['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.add('dragover')}));
+['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev,e=>{e.preventDefault();dropZone.classList.remove('dragover')}));
+dropZone.addEventListener('drop',e=>{if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tc').forEach(c=>c.classList.remove('active'));
+    tab.classList.add('active');
+    const tid=tab.dataset.tab;
+    document.getElementById('tab-'+tid).classList.add('active');
+    // 活動量タブを開いたとき再描画
+    if(tid==='activity'&&rawData&&rawData.length)renderActivityBase();
+  });});
+
+// ===== 配信管理 =====
+const DEL_CARRIERS=['docomo','iCloud','au','Gmail','Yahoo','Hotmail','SoftBank'];
+const DEL_IDS={'docomo':'del-docomo','iCloud':'del-icloud','au':'del-au','Gmail':'del-gmail','Yahoo':'del-yahoo','Hotmail':'del-hotmail','SoftBank':'del-softbank'};
+
+function getDeliveryCarrier(email){
+  if(!email||!email.includes('@'))return 'Gmail';
+  const d=email.split('@')[1].toLowerCase();
+  if(['i.softbank.jp','softbank.ne.jp'].includes(d)||d.endsWith('.vodafone.ne.jp'))return 'SoftBank';
+  if(d==='docomo.ne.jp')return 'docomo';
+  if(d==='ezweb.ne.jp'||d==='au.com')return 'au';
+  if(['icloud.com','me.com','mac.com'].includes(d))return 'iCloud';
+  if(d==='gmail.com')return 'Gmail';
+  if(d==='yahoo.co.jp')return 'Yahoo';
+  if(['hotmail.com','hotmail.co.jp','outlook.com','outlook.jp','live.com','live.jp','msn.com'].includes(d))return 'Hotmail';
+  return 'Gmail';
+}
+
+function renderDelivery(){
+  if(!rawData||!rawData.length){alert('先にCSVを読み込んでください');return;}
+  const lv2=rawData.filter(r=>(parseInt(r[COL.LEVEL])||0)===2);
+  const delCounts={};
+  DEL_CARRIERS.forEach(c=>{delCounts[c]=parseInt(document.getElementById(DEL_IDS[c])?.value)||0;});
+  const totalDel=Object.values(delCounts).reduce((s,v)=>s+v,0);
+
+  const stats={};
+  DEL_CARRIERS.forEach(c=>{stats[c]={fl:[],r0:[],r1:[],r2:[],r3:[],r4:[],r5:[],r6:[],r7p:[]};});
+
+  lv2.forEach(r=>{
+    const c=getDeliveryCarrier(r[COL.EMAIL]||'');
+    if(!stats[c])return;
+    const mid=r[COL.MEMBER_ID],sc=parseInt(r[COL.SEND_COUNT])||0;
+    stats[c].fl.push(mid);
+    if(sc===0)stats[c].r0.push(mid);
+    else if(sc===1)stats[c].r1.push(mid);
+    else if(sc===2)stats[c].r2.push(mid);
+    else if(sc===3)stats[c].r3.push(mid);
+    else if(sc===4)stats[c].r4.push(mid);
+    else if(sc===5)stats[c].r5.push(mid);
+    else if(sc===6)stats[c].r6.push(mid);
+    else stats[c].r7p.push(mid);
+  });
+
+  function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'0.0%'}
+  function rTd(ids,lbl){
+    if(!ids.length)return'<td style="text-align:right;color:var(--dm)">-</td>';
+    const k='dv_'+Math.random().toString(36).slice(2,7);
+    if(!window._dvMap)window._dvMap={};window._dvMap[k]={ids,lbl};
+    return`<td style="text-align:right;cursor:pointer;font-weight:700;color:var(--gn)" onclick="showDvIds('${k}')">${ids.length}</td>`;
+  }
+
+  const rows=DEL_CARRIERS.map(c=>{
+    const s=stats[c],del=delCounts[c],fl=s.fl.length;
+    if(fl===0&&del===0)return'';
+    const hasReply=s.r1.length+s.r2.length+s.r3.length+s.r4.length+s.r5.length+s.r6.length+s.r7p.length;
+    const k='dv_fl_'+c;if(!window._dvMap)window._dvMap={};window._dvMap[k]={ids:s.fl,lbl:'初回ログイン：'+c};
+    return`<tr>
+      <td style="font-family:'Noto Sans JP',sans-serif;font-weight:700">${c}</td>
+      <td style="text-align:right;color:var(--ac);font-weight:700">${del>0?del.toLocaleString():'-'}</td>
+      <td style="text-align:right;cursor:pointer;color:var(--gn);font-weight:700" onclick="showDvIds('${k}')">${fl}</td>
+      <td style="text-align:right">${del>0?pct(fl,del):'-'}</td>
+      <td style="text-align:right;cursor:pointer;color:var(--ac)" onclick="showDvIds('${k}')">${hasReply}</td>
+      <td style="text-align:right">${pct(hasReply,fl)}</td>
+      ${rTd(s.r1,'返信1：'+c)}
+      ${rTd(s.r2,'返信2：'+c)}
+      ${rTd(s.r3,'返信3：'+c)}
+      ${rTd(s.r4,'返信4：'+c)}
+      ${rTd(s.r5,'返信5：'+c)}
+      ${rTd(s.r6,'返信6：'+c)}
+      ${rTd(s.r7p,'返信7+：'+c)}
+    </tr>`;
+  }).filter(Boolean);
+
+  const allFl=lv2.map(r=>r[COL.MEMBER_ID]);
+  rows.push(`<tr style="font-weight:700"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>
+    <td style="text-align:right;color:var(--ac)">${totalDel>0?totalDel.toLocaleString():'-'}</td>
+    <td style="text-align:right;color:var(--gn)">${allFl.length}</td>
+    <td style="text-align:right">${totalDel>0?pct(allFl.length,totalDel):'-'}</td>
+    <td colspan="9"></td></tr>`);
+  document.getElementById('tb-delivery').innerHTML=rows.join('')||'<tr><td colspan="13" style="text-align:center;color:var(--dm);padding:18px">Lv2ユーザーなし（今日の配信反応者が0件）</td></tr>';
+
+  // イベントバインド
+  document.querySelectorAll('#tab-delivery td[onclick]').forEach(td=>{if(td._b)return;td._b=true;});
+}
+
+function showDvIds(k){
+  const e=(window._dvMap||{})[k];if(!e)return;
+  modalIDs=e.ids;
+  document.getElementById('id-modal-title').textContent=e.lbl;
+  document.getElementById('id-count').textContent=e.ids.length+'件';
+  updateIDList();
+  document.getElementById('id-modal').classList.add('open');
+}
+
+// ===== 活動量分析 =====
+let snapshotData=null;
+let actFlt={purchase:'all',login:'all',reply:'all'};
+
+function getActData(){
+  if(!rawData||!rawData.length)return[];
+  return rawData.filter(r=>{
+    const isPur=(parseFloat(r[COL.BUY_AMOUNT])||0)>0||(parseInt(r[COL.BUY_COUNT])||0)>0;
+    const sc=parseInt(r[COL.SEND_COUNT])||0;
+    const ll=tsToDate(r[COL.LAST_LOGIN]);
+    const lGap=ll?Math.floor((targetDate-ll)/86400000):999;
+    if(actFlt.purchase==='paid'&&!isPur)return false;
+    if(actFlt.purchase==='unpaid'&&isPur)return false;
+    if(actFlt.login==='7'&&lGap>7)return false;
+    if(actFlt.login==='3'&&lGap>3)return false;
+    if(actFlt.login==='0'&&lGap!==0)return false;
+    if(actFlt.reply==='yes'&&sc===0)return false;
+    if(actFlt.reply==='no'&&sc>0)return false;
+    return true;
+  });
+}
+
+function actCard(ids,label,color,val,sub){
+  const k='ac_'+Math.random().toString(36).slice(2,7);
+  if(ids&&ids.length){if(!window._acMap)window._acMap={};window._acMap[k]={ids,label};}
+  const c=ids&&ids.length>0;
+  return`<div class="act-card${c?' clickable':''}" ${c?`onclick="showAcIds('${k}')"`:''}><div class="av" style="color:${color};font-size:${String(val).length>7?'17px':'22px'}">${val}</div><div class="al">${label}</div>${sub?`<div class="as">${sub}</div>`:''}</div>`;
+}
+
+function showAcIds(k){
+  const e=(window._acMap||{})[k];if(!e)return;
+  modalIDs=e.ids;
+  document.getElementById('id-modal-title').textContent=e.label;
+  document.getElementById('id-count').textContent=e.ids.length+'件';
+  updateIDList();
+  document.getElementById('id-modal').classList.add('open');
+}
+
+function renderActivityBase(){
+  console.log('[ACT] renderActivityBase called, rawData.length=', rawData?rawData.length:0);
+  if(!rawData||!rawData.length){console.log('[ACT] rawData empty, returning');return;}
+  const thHi=parseInt(document.getElementById('pt-thresh-hi')?.value)||1000;
+  console.log('[ACT] pt-thresh-hi=',thHi);
+  const data=getActData();
+  console.log('[ACT] data.length=',data.length);
+  const allTotal=rawData.length;
+  function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'0.0%'}
+
+  const pLabel={'all':'全員','paid':'課金者のみ','unpaid':'未課金のみ'}[actFlt.purchase];
+  const lLabel={'all':'全員（30日）','7':'7日以内','3':'3日以内','0':'当日のみ'}[actFlt.login];
+  const rLabel={'all':'全員','yes':'返信あり','no':'返信なし'}[actFlt.reply];
+  const sm=document.getElementById('act-filter-summary');
+  if(sm)sm.textContent=`絞り込み: ${data.length}人 / ${allTotal}人 | ${pLabel} × ${lLabel} × ${rLabel}`;
+
+  const isPur=r=>(parseFloat(r[COL.BUY_AMOUNT])||0)>0||(parseInt(r[COL.BUY_COUNT])||0)>0;
+  const paidR=data.filter(isPur),unpaidR=data.filter(r=>!isPur(r));
+  const campR=data.filter(r=>(parseInt(r[COL.CUR_PT])||0)<=thHi);
+  const zeroR=data.filter(r=>(parseInt(r[COL.CUR_PT])||0)===0);
+  const allIds=data.map(r=>r[COL.MEMBER_ID]);
+
+  const cards=document.getElementById('act-pt-cards');
+  console.log('[ACT] act-pt-cards element:', cards);
+  if(cards){
+    // シンプルなインラインスタイルで確認
+    const card1=`<div style="background:#1e2233;border:1px solid #2a3050;border-radius:10px;padding:14px;text-align:center;cursor:pointer" onclick="showAcIds('all_${Date.now()}')">
+      <div style="font-size:22px;font-weight:800;font-family:monospace;color:#dde1f0">${data.length.toLocaleString()}</div>
+      <div style="font-size:10px;color:#6b7194;margin-top:3px">対象会員 全${allTotal}人中</div>
+    </div>`;
+    const card2=`<div style="background:#1e2233;border:1px solid #2a3050;border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:22px;font-weight:800;font-family:monospace;color:#9f7fff">${paidR.length.toLocaleString()}</div>
+      <div style="font-size:10px;color:#6b7194;margin-top:3px">課金者 ${pct(paidR.length,data.length)}</div>
+    </div>`;
+    const card3=`<div style="background:#1e2233;border:1px solid #2a3050;border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:22px;font-weight:800;font-family:monospace;color:#22cce0">${unpaidR.length.toLocaleString()}</div>
+      <div style="font-size:10px;color:#6b7194;margin-top:3px">未課金者 ${pct(unpaidR.length,data.length)}</div>
+    </div>`;
+    const card4=`<div style="background:#1e2233;border:1px solid #2a3050;border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:22px;font-weight:800;font-family:monospace;color:#f0aa40">${campR.length.toLocaleString()}</div>
+      <div style="font-size:10px;color:#6b7194;margin-top:3px">キャンペーン対象 ${thHi.toLocaleString()}pt以下</div>
+    </div>`;
+    const card5=`<div style="background:#1e2233;border:1px solid rgba(240,104,120,.3);border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:22px;font-weight:800;font-family:monospace;color:#f06878">${zeroR.length.toLocaleString()}</div>
+      <div style="font-size:10px;color:#6b7194;margin-top:3px">ポイント枯渇 0pt</div>
+    </div>`;
+    cards.innerHTML=card1+card2+card3+card4+card5;
+    console.log('[ACT] real cards HTML set, length:', cards.innerHTML.length);
+    // IDマップ登録
+    if(!window._acMap)window._acMap={};
+    window._acMap['all_latest']={ids:allIds,label:'対象会員'};
+    window._acMap['paid_latest']={ids:paidR.map(r=>r[COL.MEMBER_ID]),label:'課金者'};
+    window._acMap['unpaid_latest']={ids:unpaidR.map(r=>r[COL.MEMBER_ID]),label:'未課金者'};
+    window._acMap['camp_latest']={ids:campR.map(r=>r[COL.MEMBER_ID]),label:'キャンペーン対象'};
+    window._acMap['zero_latest']={ids:zeroR.map(r=>r[COL.MEMBER_ID]),label:'ポイント枯渇'};
+  }
+  // （actCard関数版は下記に残すが使わない）
+  if(false && cards) cards.innerHTML=
+    actCard(allIds,'対象会員','var(--tx)',data.length.toLocaleString(),`全${allTotal}人中`)+
+    actCard(paidR.map(r=>r[COL.MEMBER_ID]),'課金者','var(--pp)',paidR.length.toLocaleString(),pct(paidR.length,data.length))+
+    actCard(unpaidR.map(r=>r[COL.MEMBER_ID]),'未課金者','var(--cy)',unpaidR.length.toLocaleString(),pct(unpaidR.length,data.length))+
+    actCard(campR.map(r=>r[COL.MEMBER_ID]),'キャンペーン対象','var(--og)',campR.length.toLocaleString(),`${thHi.toLocaleString()}pt以下`)+
+    actCard(zeroR.map(r=>r[COL.MEMBER_ID]),'ポイント枯渇','var(--rd)',zeroR.length.toLocaleString(),'0pt');
+
+  const campBands=[[0,0,'0pt（枯渇）'],[1,100,'1〜100pt'],[101,300,'101〜300pt'],[301,500,'301〜500pt'],[501,thHi,`501〜${thHi}pt`]].filter(b=>b[0]<=thHi);
+  const tb=document.getElementById('tb-act-campaign');
+  if(tb) tb.innerHTML=campBands.map(([lo,hi,label])=>{
+    const ids=data.filter(r=>{const p=parseInt(r[COL.CUR_PT])||0;return p>=lo&&p<=hi;}).map(r=>r[COL.MEMBER_ID]);
+    if(!ids.length)return'';
+    const pI=ids.filter(id=>paidR.some(r=>r[COL.MEMBER_ID]===id));
+    const uI=ids.filter(id=>unpaidR.some(r=>r[COL.MEMBER_ID]===id));
+    function cTd(arr,lbl,col){const k='cm_'+Math.random().toString(36).slice(2,7);if(!window._acMap)window._acMap={};window._acMap[k]={ids:arr,label:lbl};return arr.length?`<td style="text-align:right;cursor:pointer;color:${col};font-weight:700" onclick="showAcIds('${k}')">${arr.length}</td>`:`<td style="text-align:right;color:var(--dm)">-</td>`;}
+    return`<tr><td style="font-size:11px;font-family:'Noto Sans JP',sans-serif" colspan="4">${label}</td>${cTd(pI,label+'課金者','var(--pp)')}${cTd(uI,label+'未課金','var(--cy)')}${cTd(ids,label+'合計','var(--og)')}</tr>`;
+  }).join('');
+
+  const ptBands=[[0,0,'0pt（枯渇）'],[1,thHi,`1〜${thHi}pt（対象）`],[thHi+1,5000,`${thHi+1}〜5,000pt`],[5001,20000,'5,001〜20,000pt'],[20001,99999999,'20,001pt+']];
+  const td=document.getElementById('tb-act-dist');
+  if(td) td.innerHTML=ptBands.map(([lo,hi,label])=>{
+    const ids=data.filter(r=>{const p=parseInt(r[COL.CUR_PT])||0;return p>=lo&&p<=hi;}).map(r=>r[COL.MEMBER_ID]);
+    const pI=ids.filter(id=>paidR.some(r=>r[COL.MEMBER_ID]===id));
+    const uI=ids.filter(id=>unpaidR.some(r=>r[COL.MEMBER_ID]===id));
+    function cTd2(arr,lbl,col){const k='dt_'+Math.random().toString(36).slice(2,7);if(!window._acMap)window._acMap={};window._acMap[k]={ids:arr,label:lbl};return arr.length?`<td style="text-align:right;cursor:pointer;color:${col};font-weight:600" onclick="showAcIds('${k}')">${arr.length}</td>`:`<td style="text-align:right;color:var(--dm)">-</td>`;}
+    return`<tr><td style="font-size:11px;font-family:'Noto Sans JP',sans-serif">${label}</td>${cTd2(ids,label,'var(--tx)')}<td style="text-align:right;color:var(--dm)">${pct(ids.length,data.length)}</td>${cTd2(pI,label+'課金者','var(--pp)')}${cTd2(uI,label+'未課金','var(--cy)')}</tr>`;
+  }).join('');
+}
+
+function refreshActivity(){renderActivityBase();if(snapshotData)renderActivityDiff();}
+
+function renderActivityDiff(){
+  if(!snapshotData||!rawData||!rawData.length)return;
+  const ptPerMsg=parseInt(document.getElementById('pt-per-msg')?.value)||150;
+  const snap=snapshotData.data;
+  const data=getActData();
+  function pct(n,t){return t>0?(n/t*100).toFixed(1)+'%':'0.0%'}
+
+  document.getElementById('act-diff-section').style.display='block';
+  document.getElementById('act-no-snap').style.display='none';
+  document.getElementById('act-period-label').textContent=`${snapshotData.timestamp} → 現在（${data.length}人）`;
+
+  let totalDiff=0;
+  const activeIds=[],inactiveIds=[],diffByUser=[];
+  const inactByLv={};
+
+  data.forEach(r=>{
+    const mid=String(r[COL.MEMBER_ID]);
+    const prevPt=snap[mid];
+    const curPt=parseInt(r[COL.CUR_PT])||0;
+    const diff=(prevPt!==undefined&&prevPt>curPt)?prevPt-curPt:0;
+    const lv=parseInt(r[COL.LEVEL])||0;
+    if(diff>0){totalDiff+=diff;activeIds.push(mid);diffByUser.push({mid,diff,lv});}
+    else{inactiveIds.push(mid);const k='Lv'+lv;if(!inactByLv[k])inactByLv[k]=[];inactByLv[k].push(mid);}
+  });
+
+  const estReplies=ptPerMsg>0?Math.round(totalDiff/ptPerMsg):0;
+  const avgDiff=activeIds.length?Math.round(totalDiff/activeIds.length):0;
+  const avgPerMsg=estReplies>0?Math.round(totalDiff/estReplies):0;
+  const unitAnomaly=estReplies>0&&avgPerMsg<ptPerMsg*0.7;
+
+  const wb=document.getElementById('act-warn-box');
+  if(wb){wb.style.display=unitAnomaly?'block':'none';if(unitAnomaly)wb.textContent=`⚠️ 推定単価 ${avgPerMsg}pt／通（設定値 ${ptPerMsg}pt）。割引設定またはポイント購入の影響の可能性。`;}
+
+  const dc=document.getElementById('act-diff-cards');
+  if(dc) dc.innerHTML=
+    actCard(activeIds,'活動あり','var(--gn)',activeIds.length.toLocaleString(),'消費あり')+
+    actCard(inactiveIds,'活動なし','var(--rd)',inactiveIds.length.toLocaleString(),'消費0')+
+    `<div class="act-card"><div class="av" style="color:var(--ac);font-size:18px">${totalDiff.toLocaleString()}</div><div class="al">総消費ポイント</div></div>`+
+    `<div class="act-card"><div class="av" style="color:var(--cy)">${estReplies.toLocaleString()}</div><div class="al">推定返信数</div><div class="as">÷${ptPerMsg}pt</div></div>`+
+    `<div class="act-card"><div class="av" style="color:var(--dm);font-size:18px">${avgDiff.toLocaleString()}</div><div class="al">活動者平均消費</div></div>`+
+    `<div class="act-card${unitAnomaly?' alert':''}"><div class="av" style="color:${unitAnomaly?'var(--rd)':'var(--dm)'};font-size:18px">${avgPerMsg.toLocaleString()}</div><div class="al">推定単価${unitAnomaly?' ⚠️':''}</div></div>`;
+
+  const diffBands=[[1,150,'1〜150pt（〜1通）'],[151,750,'151〜750pt（2〜5通）'],[751,1500,'751〜1,500pt（6〜10通）'],[1501,9999999,'1,501pt+（10通+）']];
+  const ta=document.getElementById('tb-act-active');
+  if(ta) ta.innerHTML=diffBands.map(([lo,hi,label])=>{
+    const ids=diffByUser.filter(d=>d.diff>=lo&&d.diff<=hi).map(d=>d.mid);
+    if(!ids.length)return'';
+    const est=Math.round(ids.reduce((s,id)=>{const d=diffByUser.find(d=>d.mid===id);return s+(d?d.diff:0)},0)/ptPerMsg);
+    const k='da_'+Math.random().toString(36).slice(2,7);if(!window._acMap)window._acMap={};window._acMap[k]={ids,label};
+    return`<tr><td style="font-size:11px;font-family:'Noto Sans JP',sans-serif">${label}</td><td style="text-align:right;cursor:pointer;color:var(--gn);font-weight:700" onclick="showAcIds('${k}')">${ids.length}</td><td style="text-align:right;color:var(--cy)">${est}</td></tr>`;
+  }).join('');
+
+  const ti=document.getElementById('tb-act-inactive');
+  if(ti) ti.innerHTML=Object.keys(inactByLv).sort((a,b)=>parseInt(a.slice(2))-parseInt(b.slice(2))).map(lbl=>{
+    const ids=inactByLv[lbl];
+    const k='di_'+Math.random().toString(36).slice(2,7);if(!window._acMap)window._acMap={};window._acMap[k]={ids,label:lbl+' 活動なし'};
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif">${lbl}</td><td style="text-align:right;cursor:pointer;color:var(--rd);font-weight:700" onclick="showAcIds('${k}')">${ids.length}</td></tr>`;
+  }).join('');
+}
+
+function saveSnapshot(){
+  if(!rawData||!rawData.length){alert('先にCSVを読み込んでください');return;}
+  const data={};rawData.forEach(r=>{data[String(r[COL.MEMBER_ID])]=parseInt(r[COL.CUR_PT])||0;});
+  const ts=new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
+  const snap={timestamp:ts,count:rawData.length,data};
+  const blob=new Blob([JSON.stringify(snap,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  const jst=new Date(Date.now()+9*3600000);
+  a.href=url;a.download=`snapshot_${jst.toISOString().substring(0,16).replace(/[T:]/g,'-')}.json`;
+  a.click();URL.revokeObjectURL(url);
+  const btn=document.getElementById('btn-save-snap');
+  if(btn){btn.textContent='✅ 保存完了';setTimeout(()=>{btn.textContent='💾 スナップショット保存（日時入りJSON）';},2500);}
+}
+
+// DOMContentLoaded後のイベントバインド
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('input-snap');
+  if(inp){
+    inp.addEventListener('change',e=>{
+      const f=e.target.files[0];if(!f)return;
+      const r=new FileReader();
+      r.onload=ev=>{
+        try{snapshotData=JSON.parse(ev.target.result);
+          const el=document.getElementById('snap-drop');
+          if(el)el.textContent=`✅ 読込済: ${snapshotData.timestamp}（${snapshotData.count}人）`;
+          if(rawData&&rawData.length)renderActivityDiff();
+        }catch(err){alert('JSON読込エラー: '+err.message);}
+      };r.readAsText(f);
+    });
+    const sd=document.getElementById('snap-drop');
+    if(sd){
+      sd.addEventListener('dragover',e=>{e.preventDefault();sd.style.borderColor='var(--ac)'});
+      sd.addEventListener('dragleave',()=>{sd.style.borderColor=''});
+      sd.addEventListener('drop',e=>{e.preventDefault();sd.style.borderColor='';const f=e.dataTransfer.files[0];if(!f)return;const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change'));});
+    }
+  }
+  ['act-f-purchase','act-f-login','act-f-reply'].forEach(id=>{
+    const grp=document.getElementById(id);if(!grp)return;
+    grp.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        grp.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        const key=id.replace('act-f-','');actFlt[key]=btn.dataset.val;
+        refreshActivity();
+      });
+    });
+  });
+});
+
+function activateActivityTab(){
+  const btn=document.getElementById('btn-save-snap');if(btn)btn.disabled=false;
+  renderActivityBase();if(snapshotData)renderActivityDiff();
+}
+
+</script>
+</body>
+</html>
