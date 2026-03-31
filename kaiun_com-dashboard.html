@@ -202,6 +202,12 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 .debug-box strong{color:var(--tx)}
 @media(max-width:900px){.two-col,.phase-row{grid-template-columns:1fr}}
 @media(max-width:768px){#dashboard{padding:12px}.summary-row{grid-template-columns:repeat(2,1fr)}.phase-grid{grid-template-columns:repeat(2,1fr)}}
+.stbtn{background:var(--s2);border:1px solid var(--bd);color:var(--dm);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s}
+.stbtn.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.btn-toggle{display:flex;gap:4px;flex-wrap:wrap}
+.btn-toggle button{background:var(--s2);border:1px solid var(--bd);color:var(--dm);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;transition:all .15s}
+.btn-toggle button:hover{border-color:var(--ac);color:var(--tx)}
+.btn-toggle button.active{background:var(--ac);border-color:var(--ac);color:#fff}
 </style>
 </head>
 <body>
@@ -345,6 +351,30 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 
   <!-- 今日の状況 -->
   <div class="tc active" id="tab-today">
+
+    <!-- 🎯 課金予備軍モニター（0〜3日目・未課金・今日ログイン・返信あり） -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="stitle">🎯 課金予備軍モニター
+        <span class="hot-badge" style="background:rgba(91,127,255,.15);color:var(--ac);border-color:rgba(91,127,255,.3)">0〜3日目・未課金</span>
+        <span style="font-size:11px;color:var(--dm);font-weight:400">今日ログイン × 返信あり — 広告コード別</span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th style="text-align:left">広告コード</th>
+            <th>在籍<br><span style="font-size:9px;font-weight:400">0〜3日目・未課金</span></th>
+            <th>今日ログイン</th>
+            <th>ログイン率</th>
+            <th style="color:var(--ac)">返信あり</th>
+            <th style="color:var(--ac)">返信率<br><span style="font-size:9px;font-weight:400">ログイン中</span></th>
+            <th style="color:var(--og)">日目内訳<br><span style="font-size:9px;font-weight:400">0日/1日/2日/3日</span></th>
+          </tr></thead>
+          <tbody id="tb-early-ad"></tbody>
+        </table>
+      </div>
+      <div class="note">💡 0〜3日目・未課金・今日ログイン・返信ありの層が課金予備軍。広告コード別に見ることで「どの流入元が質が高いか」が分かる。</div>
+    </div>
+
     <div class="two-col" style="margin-bottom:16px">
       <div>
         <div class="section">
@@ -731,144 +761,86 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
       📂 前回スナップショット（JSON）を読み込むと活動量差分が表示されます
     </div>
 
-  </div>
-
-  <!-- 活動量分析 -->
-  <div class="tc" id="tab-activity">
-    <!-- スナップショット -->
-    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
-      <div style="flex:1;min-width:240px">
-        <div class="stitle">📸 スナップショット保存</div>
-        <div style="font-size:11px;color:var(--dm);margin-bottom:8px">現在のCSVをJSON保存。次回読み込みで差分を計算します。</div>
-        <button class="btn" id="btn-save-snapshot" onclick="saveSnapshot()" style="background:var(--gn-bg);border-color:var(--gn);color:var(--gn);font-weight:700" disabled>
-          💾 スナップショット保存（日時入りJSON）
-        </button>
+    <!-- ユーザー一覧テーブル -->
+    <div class="section" id="user-list-section" style="margin-top:16px">
+      <!-- タイトル行 -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="stitle" style="margin:0">👤 ユーザー別詳細一覧</div>
+        <button id="btn-copy-ids" onclick="copyUserIds()" style="margin-left:auto;background:var(--ac);border:1px solid var(--ac);color:#fff;padding:5px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📋 表示中をコピー</button>
       </div>
-      <div style="flex:1;min-width:240px">
-        <div class="stitle">📂 前回スナップショット読み込み</div>
-        <div id="act-drop" class="act-drop" onclick="document.getElementById('input-snapshot').click()">
-          <div style="font-size:12px;font-weight:600;color:var(--dm)" id="act-drop-label">前回保存したJSONをドロップ or クリック</div>
+
+      <!-- フィルターバー -->
+      <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+
+        <!-- 状態フィルター -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">状態</span>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="stbtn on" data-ufilter="all" onclick="setUFilter('all',this)">全員</button>
+            <button class="stbtn" data-ufilter="active" onclick="setUFilter('active',this)">活動あり</button>
+            <button class="stbtn" data-ufilter="pt_inactive" onclick="setUFilter('pt_inactive',this)">PTあり未活動</button>
+            <button class="stbtn" data-ufilter="no_pt" onclick="setUFilter('no_pt',this)">PT枯渇</button>
+            <button class="stbtn" data-ufilter="no_login" onclick="setUFilter('no_login',this)">未ログイン</button>
+          </div>
         </div>
-        <input type="file" id="input-snapshot" accept=".json" style="display:none">
+
+        <!-- 最終ログイン日フィルター -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">最終ログイン日</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="date" id="ul-login-from" onchange="renderUserList()"
+              style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+            <span style="color:var(--dm);font-size:11px">〜</span>
+            <input type="date" id="ul-login-to" onchange="renderUserList()"
+              style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+            <button onclick="clearULoginFilter()"
+              style="background:none;border:1px solid var(--bd);color:var(--dm);padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit">クリア</button>
+          </div>
+        </div>
+
+        <!-- 送信数フィルター -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">送信数</span>
+          <div class="btn-toggle" id="ul-filter-send">
+            <button class="active" data-val="0">全員</button>
+            <button data-val="1">1通以上</button>
+            <button data-val="3">3通以上</button>
+            <button data-val="7">7通以上</button>
+          </div>
+        </div>
+
+        <!-- 並替 -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">並替</span>
+          <select id="user-sort" onchange="renderUserList()" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+            <option value="pt_desc">保有PT多い順</option>
+            <option value="login_desc">ログイン日（新しい順）</option>
+            <option value="login_asc">ログイン日（古い順）</option>
+            <option value="send_desc">送信数多い順</option>
+            <option value="consume_desc">消費PT多い順</option>
+            <option value="status">ステータス順</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="user-list-info" style="font-size:11px;color:var(--dm);margin-bottom:8px"></div>
+      <div class="tw" style="max-height:520px;overflow-y:auto">
+        <table id="user-list-table" style="font-size:12px">
+          <thead><tr>
+            <th style="text-align:left;padding-left:10px;min-width:130px">名前 / ID</th>
+            <th class="ul-sort" data-col="status" style="text-align:left;min-width:120px;cursor:pointer;user-select:none" title="クリックで並替">ステータス <span class="ul-sort-icon" data-col="status"></span></th>
+            <th class="ul-sort" data-col="pt_desc" style="cursor:pointer;user-select:none" title="クリックで並替">保有PT <span class="ul-sort-icon" data-col="pt_desc"></span></th>
+            <th id="th-consume" class="ul-sort" data-col="consume_desc" style="color:var(--cy);cursor:pointer;user-select:none" title="クリックで並替">消費PT <span class="ul-sort-icon" data-col="consume_desc"></span><br><span style="font-size:9px;color:var(--dm)">(スナップ差分)</span></th>
+            <th class="ul-sort" data-col="reply_desc" style="cursor:pointer;user-select:none" title="クリックで並替">推定返信 <span class="ul-sort-icon" data-col="reply_desc"></span></th>
+            <th class="ul-sort" data-col="send_desc" style="color:var(--gn);cursor:pointer;user-select:none" title="クリックで並替">送信数 <span class="ul-sort-icon" data-col="send_desc"></span></th>
+            <th class="ul-sort" data-col="login_desc" style="cursor:pointer;user-select:none" title="クリックで並替">最終ログイン <span class="ul-sort-icon" data-col="login_desc"></span></th>
+            <th>状態</th>
+          </tr></thead>
+          <tbody id="user-list-body"></tbody>
+        </table>
       </div>
     </div>
 
-    <!-- 設定 -->
-    <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">
-      <div class="stitle" style="margin-bottom:10px">⚙️ 設定</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
-        <div class="pt-row" style="margin:0">
-          <label>1通あたり消費pt</label>
-          <input type="number" class="pt-input" id="pt-per-msg" value="150" min="1">
-          <span style="font-size:12px;color:var(--dm)">pt／通</span>
-        </div>
-        <div class="pt-row" style="margin:0">
-          <label>キャンペーン対象ポイント上限</label>
-          <input type="number" class="pt-input" id="pt-thresh-hi" value="1000" min="0">
-          <span style="font-size:12px;color:var(--dm)">pt以下</span>
-        </div>
-        <button class="btn btn-p" onclick="refreshActivity()">適用</button>
-      </div>
-    </div>
-
-    <!-- フィルターバー -->
-    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;margin-bottom:10px;color:var(--tx)">🔍 絞り込みフィルター
-        <span style="font-size:10px;color:var(--dm);font-weight:400;margin-left:8px">組み合わせ自由・ボタンを押すと即反映</span>
-      </div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">課金状態</span>
-          <div class="btn-toggle" id="filter-purchase">
-            <button class="active" data-val="all">全員</button>
-            <button data-val="paid">課金者のみ</button>
-            <button data-val="unpaid">未課金のみ</button>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">最終ログイン</span>
-          <div class="btn-toggle" id="filter-login">
-            <button class="active" data-val="all">全員（30日）</button>
-            <button data-val="7">7日以内</button>
-            <button data-val="3">3日以内</button>
-            <button data-val="0">当日のみ</button>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <span style="font-size:10px;color:var(--dm);font-weight:600;text-transform:uppercase;letter-spacing:.4px">返信状態</span>
-          <div class="btn-toggle" id="filter-reply">
-            <button class="active" data-val="all">全員</button>
-            <button data-val="yes">返信あり</button>
-            <button data-val="no">返信なし</button>
-          </div>
-        </div>
-      </div>
-      <!-- フィルター結果サマリー -->
-      <div id="filter-summary" style="margin-top:10px;font-size:12px;color:var(--ac);font-family:'JetBrains Mono',monospace"></div>
-    </div>
-
-    <!-- ポイント状況 -->
-    <div class="section">
-      <div class="stitle">💰 現在ポイント状況（キャンペーン対象抽出）</div>
-      <div class="act-grid" id="act-pt-cards"></div>
-      <div class="two-col">
-        <div>
-          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--og)">🎯 キャンペーン対象（ポイント枯渇）</div>
-          <div class="tw">
-            <table>
-              <thead><tr><th colspan="4">ポイント帯</th><th style="color:var(--pp)">課金者</th><th style="color:var(--cy)">未課金者</th><th style="color:var(--og)">合計</th><th>平均pt</th></tr></thead>
-              <tbody id="tb-pt-campaign"></tbody>
-            </table>
-          </div>
-          <div class="note">💡 数字クリックでID抽出→コピー。そのままキャンペーン配信リストに。</div>
-        </div>
-        <div>
-          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--dm)">全ポイント帯分布</div>
-          <div class="tw">
-            <table>
-              <thead><tr><th>ポイント帯</th><th>人数</th><th>構成比</th><th style="color:var(--pp)">課金者</th><th style="color:var(--cy)">未課金者</th></tr></thead>
-              <tbody id="tb-pt-dist"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 差分分析 -->
-    <div id="act-diff-section" style="display:none">
-      <div class="section">
-        <div class="stitle">📊 活動量（差分）分析
-          <span id="act-period-label" style="font-size:11px;color:var(--dm);font-weight:400"></span>
-        </div>
-        <div id="act-warn" style="display:none;margin-bottom:12px"></div>
-        <div class="act-grid" id="act-diff-cards"></div>
-        <div class="two-col">
-          <div>
-            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--gn)">✅ 活動あり（ポイント消費）</div>
-            <div class="tw">
-              <table>
-                <thead><tr><th>消費ポイント帯</th><th>人数</th><th>推定返信数</th></tr></thead>
-                <tbody id="tb-diff-active"></tbody>
-              </table>
-            </div>
-          </div>
-          <div>
-            <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--rd)">❌ 活動なし（消費0）</div>
-            <div class="tw">
-              <table>
-                <thead><tr><th>ステータス</th><th>人数</th><th>今日ログイン</th></tr></thead>
-                <tbody id="tb-diff-inactive"></tbody>
-              </table>
-            </div>
-            <div class="note">💡 ログインしてるのに消費0 = コンテンツが刺さっていない可能性。</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="act-no-snapshot" style="padding:24px;text-align:center;color:var(--dm);font-size:12px">
-      📂 前回スナップショット（JSON）を読み込むと活動量差分が表示されます
-    </div>
   </div>
 
   <!-- 配信管理 -->
@@ -1107,6 +1079,8 @@ function rc(r){return r>=50?'rh':r>=25?'rm':'rl'}
 function yen(v){return v===0?'-':'¥'+Math.round(v).toLocaleString()}
 function todayStr(){const n=new Date(),j=new Date(n.getTime()+9*3600000);return j.getUTCFullYear()+'-'+String(j.getUTCMonth()+1).padStart(2,'0')+'-'+String(j.getUTCDate()).padStart(2,'0')}
 function gapBucket(days){if(days===null||!isFinite(days)||days<0)return 'over7';if(days===0)return 'today';if(days===1)return 'd1';if(days<=3)return 'd3';if(days<=7)return 'd7';return 'over7'}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 
 // ===== MODAL =====
 let currentIds=[];
@@ -1214,6 +1188,7 @@ function mergeData(csv,xl){
   return csv.map(row=>{
     const mid=String(row[CC.MID]||'').trim();
     const x=xl[mid]||{};
+    const name=String(row[2]||'').trim(); // C列=名前
     const email=x.email||String(row[CC.MOBILE_EMAIL]||'').trim()||String(row[CC.PC_EMAIL]||'').trim();
     const buyAmt=parseFloat(row[CC.AMT])||0;
     const buyCnt=parseInt(row[CC.BUY_CNT])||0;
@@ -1269,7 +1244,7 @@ function mergeData(csv,xl){
     const isHot=is7plus&&!isPurchaser;// 7通以上返信・未課金
     const curPt=parseInt(row[CC.CUR_PT])||0;
     const totalUsePt=parseInt(row[CC.TOTAL_USE_PT])||0;
-    return{mid,email,carrier:getCarrier(email),buyAmt,buyCnt,firstBuy,regDt,subStatus,
+    return{mid,name,email,carrier:getCarrier(email),buyAmt,buyCnt,firstBuy,regDt,subStatus,
       sendCnt,dayLabel,isStep,isToday,lGap,ipClass,lastHour,regToBuy,
       isPurchaser,is7plus,isHot,ip:x.ip||'',adCode,
       curPt,totalUsePt};
@@ -1595,6 +1570,97 @@ function render(res){
   document.getElementById('btn-save-snapshot').disabled=false;
   renderActivityBase();
   if(snapshotData)renderActivityDiff();
+
+  // ===== 課金予備軍モニター（0〜3日目・未課金・今日ログイン・返信あり）=====
+  renderEarlyAdMonitor(getFilteredData());
+}
+
+function renderEarlyAdMonitor(data){
+  // 対象：0〜3日目・未課金・今日ログイン
+  const EARLY_DAYS=new Set(['登録0日目','登録1日目','登録2日目','登録2.5日目','登録3日目']);
+  const target=data.filter(u=>
+    !u.isPurchaser &&
+    u.isToday &&
+    EARLY_DAYS.has(u.dayLabel)
+  );
+  if(!target.length){
+    document.getElementById('tb-early-ad').innerHTML=
+      '<tr><td colspan="7" style="text-align:center;color:var(--dm);padding:14px">対象者なし（0〜3日目・未課金・今日ログインがいません）</td></tr>';
+    return;
+  }
+
+  // 広告コード別に集計
+  const adMap={};
+  target.forEach(u=>{
+    const code=u.adCode||'(なし)';
+    if(!adMap[code])adMap[code]={
+      loginIds:[],replyIds:[],
+      d0:[],d1:[],d2:[],d3:[]
+    };
+    const m=adMap[code];
+    m.loginIds.push(u.mid);
+    if(u.sendCnt>=1)m.replyIds.push(u.mid);
+    if(u.dayLabel==='登録0日目')m.d0.push(u.mid);
+    else if(u.dayLabel==='登録1日目')m.d1.push(u.mid);
+    else if(u.dayLabel==='登録2日目'||u.dayLabel==='登録2.5日目')m.d2.push(u.mid);
+    else if(u.dayLabel==='登録3日目')m.d3.push(u.mid);
+  });
+
+  // 在籍数（今日ログイン問わず同条件の全員）
+  const allTarget=data.filter(u=>!u.isPurchaser&&EARLY_DAYS.has(u.dayLabel));
+  const allAdTotal={};
+  allTarget.forEach(u=>{
+    const code=u.adCode||'(なし)';
+    allAdTotal[code]=(allAdTotal[code]||0)+1;
+  });
+
+  // 返信者数で降順ソート
+  const rows=Object.entries(adMap)
+    .sort((a,b)=>b[1].replyIds.length-a[1].replyIds.length)
+    .map(([code,m])=>{
+      const isPure=_renderPureAdCodes.size>0&&_renderPureAdCodes.has(code);
+      const total=allAdTotal[code]||0;
+      const loginN=m.loginIds.length;
+      const replyN=m.replyIds.length;
+      const loginRate=total>0?Math.round(loginN/total*100):0;
+      const replyRate=loginN>0?Math.round(replyN/loginN*100):0;
+      const replyColor=replyRate>=50?'var(--gn)':replyRate>=30?'var(--og)':'var(--ac)';
+      const badge=isPure
+        ?`<span style="margin-left:5px;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(240,170,64,.15);color:var(--og);border:1px solid rgba(240,170,64,.3)">純広</span>`
+        :`<span style="margin-left:5px;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,204,224,.1);color:var(--cy);border:1px solid rgba(34,204,224,.25)">CSV</span>`;
+      const breakdown=`<span style="color:var(--og)">${m.d0.length}</span>/<span style="color:var(--tx)">${m.d1.length}</span>/<span style="color:var(--tx)">${m.d2.length}</span>/<span style="color:var(--tx)">${m.d3.length}</span>`;
+      return`<tr>
+        <td style="text-align:left;padding-left:10px;font-family:'JetBrains Mono',monospace;font-size:11px">
+          ${esc(code)}${badge}
+        </td>
+        ${cTd([...m.loginIds,...allTarget.filter(u=>(u.adCode||'(なし)')===code&&!m.loginIds.includes(u.mid)).map(u=>u.mid)],`${code} 在籍（0〜3日目・未課金）`)}
+        ${cTd(m.loginIds,`${code} 今日ログイン（0〜3日目・未課金）`,'color:var(--gn)')}
+        <td class="${loginRate>=50?'rh':loginRate>=30?'rm':'rl'}">${loginRate}%</td>
+        ${cTd(m.replyIds,`${code} 返信あり（0〜3日目・未課金・今日）`,`color:${replyColor};font-weight:700`)}
+        <td style="color:${replyColor};font-weight:700">${replyRate}%</td>
+        <td style="font-size:11px">${breakdown}</td>
+      </tr>`;
+    });
+
+  // 合計行
+  const totalLogin=Object.values(adMap).reduce((s,m)=>s+m.loginIds.length,0);
+  const totalReply=Object.values(adMap).reduce((s,m)=>s+m.replyIds.length,0);
+  const totalAll=allTarget.length;
+  const allLoginIds=[...new Set(target.map(u=>u.mid))];
+  const allReplyIds=[...new Set(target.filter(u=>u.sendCnt>=1).map(u=>u.mid))];
+
+  document.getElementById('tb-early-ad').innerHTML=
+    rows.join('')+
+    `<tr class="tot-row">
+      <td style="font-family:'Noto Sans JP',sans-serif">合計</td>
+      ${cTd(allTarget.map(u=>u.mid),'0〜3日目・未課金 全在籍')}
+      ${cTd(allLoginIds,'0〜3日目・未課金・今日ログイン 全体','color:var(--gn);font-weight:700')}
+      <td class="${totalAll>0?totalLogin/totalAll>=0.5?'rh':totalLogin/totalAll>=0.3?'rm':'rl':''}">${totalAll>0?Math.round(totalLogin/totalAll*100):0}%</td>
+      ${cTd(allReplyIds,'0〜3日目・未課金・返信あり 全体','color:var(--ac);font-weight:700')}
+      <td style="color:var(--ac);font-weight:700">${totalLogin>0?Math.round(totalReply/totalLogin*100):0}%</td>
+      <td>-</td>
+    </tr>`;
+  bindClicks();
 }
 
 // ===== BOT ID COPY =====
@@ -1663,13 +1729,7 @@ function renderActivityBase(){
   const paidCount=data.filter(u=>u.isPurchaser).length;
   const unpaidCount=data.filter(u=>!u.isPurchaser).length;
 
-  // クリッカブルカード生成ヘルパー
-  function actCard(ids,label,color,value,sub,fontSize='26px'){
-    const k='ac_'+Math.random().toString(36).slice(2,8);
-    memberMap[k]=ids;
-    const hasIds=ids&&ids.length>0;
-    return`<div class="act-metric${hasIds?' clickable':''}" ${hasIds?`data-k="${k}" data-l="${label}"`:''}><div class="av" style="color:${color};font-size:${fontSize}">${value}</div><div class="al">${label}</div>${sub?`<div class="as">${sub}</div>`:''}</div>`;
-  }
+  // actCardはグローバル関数として定義済み
 
   const paidIds=data.filter(u=>u.isPurchaser).map(u=>u.mid);
   const unpaidIds=data.filter(u=>!u.isPurchaser).map(u=>u.mid);
@@ -1728,11 +1788,29 @@ function renderActivityBase(){
   }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(data.map(u=>u.mid),'フィルター対象全員')}<td>100%</td>${cTd(data.filter(u=>u.isPurchaser).map(u=>u.mid),'課金者合計','color:var(--pp)')}${cTd(data.filter(u=>!u.isPurchaser).map(u=>u.mid),'未課金者合計','color:var(--cy)')}</tr>`;
 
   bindClicks();
+  bindActFilters();
+  renderUserList();
 }
 
 function refreshActivity(){
   renderActivityBase();
   if(snapshotData)renderActivityDiff();
+}
+
+function bindActFilters(){
+  document.querySelectorAll('.btn-toggle button').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const group=this.closest('.btn-toggle');
+      group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      const filterId=group.id;
+      const val=this.dataset.val;
+      if(filterId==='filter-purchase') actFilter.purchase=val;
+      else if(filterId==='filter-login') actFilter.login=val;
+      else if(filterId==='filter-reply') actFilter.reply=val;
+      refreshActivity();
+    });
+  });
 }
 
 function refreshActivity(){
@@ -1810,7 +1888,7 @@ function renderActivityDiff(){
   const inactKeys=Object.keys(inactiveByStatus).sort((a,b)=>inactiveByStatus[b].total.length-inactiveByStatus[a].total.length);
   document.getElementById('tb-diff-inactive').innerHTML=inactKeys.map(k=>{
     const d=inactiveByStatus[k];
-    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${k}</td>${cTd(d.total,k+' 活動なし','color:var(--rd)')}${cTd(d.login,k+' 活動なし・今日ログイン','color:var(--og)')}</tr>`;
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${esc(k)}</td>${cTd(d.total,k+' 活動なし','color:var(--rd)')}${cTd(d.login,k+' 活動なし・今日ログイン','color:var(--og)')}</tr>`;
   }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(inactiveIds,'活動なし 全ユーザー','color:var(--rd);font-weight:700')}<td>-</td></tr>`;
 
   bindClicks();
@@ -2152,6 +2230,12 @@ let csvRaw=null,xlsxRaw=null,mergedData=[];
 let _renderPureAdCodes=new Set();
 let _currentTargetDate=new Date();
 let _userMap={};
+function actCard(ids,label,color,value,sub,fontSize='26px'){
+  const k='ac_'+Math.random().toString(36).slice(2,8);
+  memberMap[k]=ids;
+  const hasIds=ids&&ids.length>0;
+  return`<div class="act-metric${hasIds?' clickable':''}" ${hasIds?`data-k="${k}" data-l="${label}"`:''}><div class="av" style="color:${color};font-size:${fontSize}">${value}</div><div class="al">${label}</div>${sub?`<div class="as">${sub}</div>`:''}</div>`;
+}
 function isAdUser(u){
   if(!u)return false;
   const obj=typeof u==='string'?_userMap[u]:u;
@@ -2165,8 +2249,16 @@ document.getElementById('input-csv').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=ev=>{
     const u8=new Uint8Array(ev.target.result);
-    let text;try{text=new TextDecoder('cp932').decode(u8);if(text.includes('\uFFFD'))throw 0;}
-    catch(e){text=new TextDecoder('utf-8').decode(u8);}
+    let text;
+    if(u8[0]===0xEF&&u8[1]===0xBB&&u8[2]===0xBF){
+      // UTF-8 BOM あり
+      text=new TextDecoder('utf-8').decode(u8.slice(3));
+    } else {
+      // このCSVはShift-JIS形式。shift_jisを優先し、失敗時のみUTF-8にフォールバック
+      // ※ブラウザのWHATWG仕様では'cp932'は無効ラベル。'shift_jis'を使う
+      try{text=new TextDecoder('shift_jis').decode(u8);if(text.includes('\uFFFD'))throw 0;}
+      catch(e){text=new TextDecoder('utf-8').decode(u8);}
+    }
     csvRaw=parseCSV(text);
     document.getElementById('csv-status').textContent=`✓ ${csvRaw.length}行`;
     document.getElementById('box-csv').classList.add('loaded');checkReady();
@@ -2180,7 +2272,7 @@ document.getElementById('input-xlsx').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=ev=>{
     try{
-      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true,codepage:932});
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
       xlsxRaw=parseXlsx(wb);
       document.getElementById('xlsx-status').textContent=`✓ ${Object.keys(xlsxRaw).length}人`;
       document.getElementById('box-xlsx').classList.add('loaded');checkReady();
@@ -2227,6 +2319,7 @@ function startAnalysis(){
   ['btn-save-noon','btn-save-night'].forEach(id=>{
     const b=document.getElementById(id);if(b)b.disabled=false;
   });
+  initUListFilters(); // ユーザー一覧の送信数フィルターボタンを初期化
 }
 
 // ===== フィルタートグル =====
@@ -2269,7 +2362,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
 // ===== 今日の記録を保存（推移トラッカー用） =====
 function saveDailyLog(timeSlot='night'){
   if(!mergedData||!mergedData.length){alert('先にCSVとExcelを読み込んでください');return;}
-  const today=todayStr();
+  const today=document.getElementById('target-date')?.value||todayStr();
   // 純広告コードをlocalStorageから取得
   const pureAdCodes=new Set((localStorage.getItem('kaiun_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
 
@@ -2304,12 +2397,38 @@ function saveDailyLog(timeSlot='night'){
     if(replySegs[key])replySegs[key].push(u.mid);
   });
 
+  // 広告コード別集計（ログイン・返信IDリスト）
+  const adCodeStats={};
+  loginUsers.forEach(u=>{
+    if(!adCodeStats[u.adCode])adCodeStats[u.adCode]={loginIds:[],replyIds:[]};
+    adCodeStats[u.adCode].loginIds.push(u.mid);
+  });
+  replyUsers.forEach(u=>{
+    if(!adCodeStats[u.adCode])adCodeStats[u.adCode]={loginIds:[],replyIds:[]};
+    adCodeStats[u.adCode].replyIds.push(u.mid);
+  });
+
+  // ステータス別集計（どの日目の人がログインしたか）
+  const statusStats={};
+  loginUsers.forEach(u=>{
+    const k=u.dayLabel||'(不明)';
+    if(!statusStats[k])statusStats[k]={loginIds:[],replyIds:[]};
+    statusStats[k].loginIds.push(u.mid);
+  });
+  replyUsers.forEach(u=>{
+    const k=u.dayLabel||'(不明)';
+    if(!statusStats[k])statusStats[k]={loginIds:[],replyIds:[]};
+    statusStats[k].replyIds.push(u.mid);
+  });
+
   const log={
     date:today,
     // 合計
     login:loginUsers.length,
     reply:replyUsers.length,
     total:mergedData.length,
+    totalPaid:mergedData.filter(u=>u.isPurchaser).length,
+    totalUnpaid:mergedData.filter(u=>!u.isPurchaser).length,
     // セグメント別ログイン
     login_new:segs.new_ad.length+segs.new_csv.length,
     login_paid:segs.paid_ad.length+segs.paid_csv.length,
@@ -2326,6 +2445,14 @@ function saveDailyLog(timeSlot='night'){
     loginIds_new:segs.new_ad.concat(segs.new_csv),
     loginIds_paid:segs.paid_ad.concat(segs.paid_csv),
     loginIds_unpaid:segs.unpaid_ad.concat(segs.unpaid_csv),
+    loginIds_ad:segs.new_ad.concat(segs.paid_ad,segs.unpaid_ad),
+    loginIds_csv:segs.new_csv.concat(segs.paid_csv,segs.unpaid_csv),
+    replyIds_paid:replySegs.paid_ad.concat(replySegs.paid_csv),
+    replyIds_unpaid:replySegs.unpaid_ad.concat(replySegs.unpaid_csv),
+    replyIds_new:replySegs.new_ad.concat(replySegs.new_csv),
+    // 広告コード別・ステータス別（週次ユニーク計算用）
+    adCodeStats,
+    statusStats,
     pureAdCodes:[...pureAdCodes],
     timeSlot,  // 'noon'=12時 / 'night'=21時
     savedAt:new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})
@@ -2453,6 +2580,208 @@ function setToday(){
   mergedData=mergeData(csvRaw,xlsxRaw);
   render(analyze(getFilteredData()));
 }
+
+// ===== ユーザー一覧 =====
+let _uFilter = 'all';
+let _uSendMin = 0; // 送信数フィルター
+let _userListData = [];
+// ヘッダーソート状態
+let _ulSortCol = 'pt_desc';  // デフォルト：保有PT降順
+let _ulSortDir = 'desc';     // 'asc' | 'desc'
+
+// ヘッダークリックで並替
+function ulSortBy(col) {
+  // 同じ列を再クリック → 昇順/降順トグル
+  const baseCol = col.replace(/_desc$|_asc$/, '');
+  const curBase = _ulSortCol.replace(/_desc$|_asc$/, '');
+  if (baseCol === curBase) {
+    _ulSortDir = _ulSortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    _ulSortCol = col;
+    _ulSortDir = 'desc';
+  }
+  // ドロップダウンも同期
+  const sel = document.getElementById('user-sort');
+  if (sel) {
+    const target = _ulSortDir === 'desc' ? col : col.replace('_desc','_asc').replace('_asc','_desc');
+    const opt = sel.querySelector(`option[value="${_ulSortCol}"]`);
+    if (!opt) {
+      // login系の変換
+      if (baseCol === 'login') sel.value = _ulSortDir === 'desc' ? 'login_desc' : 'login_asc';
+    } else { sel.value = opt.value; }
+  }
+  renderUserList();
+}
+
+function setUFilter(f, btn) {
+  _uFilter = f;
+  document.querySelectorAll('[data-ufilter]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderUserList();
+}
+
+function clearULoginFilter() {
+  const from = document.getElementById('ul-login-from');
+  const to   = document.getElementById('ul-login-to');
+  if(from) from.value = '';
+  if(to)   to.value   = '';
+  renderUserList();
+}
+
+function initUListFilters() {
+  // 送信数フィルターボタン
+  const grp = document.getElementById('ul-filter-send');
+  if(grp) {
+    grp.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        grp.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _uSendMin = parseInt(btn.dataset.val) || 0;
+        renderUserList();
+      });
+    });
+  }
+  // ヘッダークリックで並替
+  document.querySelectorAll('.ul-sort').forEach(th => {
+    th.addEventListener('click', () => ulSortBy(th.dataset.col));
+  });
+}
+
+function buildUserListData() {
+  const data = getActivityFilteredData();
+  const ptPerMsg = parseInt(document.getElementById('pt-per-msg').value) || 150;
+  const snap = snapshotData ? snapshotData.data : null;
+
+  _userListData = data.map(u => {
+    const prevUsePt = snap ? (snap[u.mid] || 0) : null;
+    const consumed = snap !== null ? Math.max(0, u.totalUsePt - prevUsePt) : null;
+    const replyEst = consumed !== null ? Math.round(consumed / ptPerMsg) : null;
+
+    let state;
+    if (!u.isToday) state = 'no_login';
+    else if (consumed !== null && consumed > 0) state = 'active';
+    else if (u.curPt <= 0) state = 'no_pt';
+    else state = 'pt_inactive';
+
+    return { ...u, consumed, replyEst, state };
+  });
+}
+
+function renderUserList() {
+  buildUserListData();
+
+  // ドロップダウンの値もソートに使う（ドロップダウン変更時）
+  const selVal = document.getElementById('user-sort')?.value || 'pt_desc';
+  // ヘッダークリックが優先。ただしドロップダウンが変わっていればそちらを使う
+  const sortKey = selVal;
+
+  const loginFrom = document.getElementById('ul-login-from')?.value || '';
+  const loginTo   = document.getElementById('ul-login-to')?.value   || '';
+
+  let filtered = _userListData.filter(u => {
+    if (_uFilter !== 'all' && u.state !== _uFilter) return false;
+    if (_uSendMin > 0 && (u.sendCnt || 0) < _uSendMin) return false;
+    if (loginFrom && u.lastDay && u.lastDay < loginFrom) return false;
+    if (loginTo   && u.lastDay && u.lastDay > loginTo)   return false;
+    if ((loginFrom || loginTo) && !u.lastDay) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    let va, vb;
+    switch(sortKey) {
+      case 'pt_desc':      return (b.curPt||0) - (a.curPt||0);
+      case 'consume_desc': return (b.consumed||0) - (a.consumed||0);
+      case 'send_desc':    return (b.sendCnt||0) - (a.sendCnt||0);
+      case 'reply_desc':   return (b.replyEst||0) - (a.replyEst||0);
+      case 'login_desc':   return (b.lastDay||'').localeCompare(a.lastDay||'');
+      case 'login_asc':    return (a.lastDay||'').localeCompare(b.lastDay||'');
+      case 'status':       return (a.dayLabel||'').localeCompare(b.dayLabel||'');
+      default: return 0;
+    }
+  });
+
+  // ヘッダーのソートアイコン更新
+  document.querySelectorAll('.ul-sort-icon').forEach(icon => {
+    const col = icon.dataset.col;
+    const baseCol = col.replace(/_desc$|_asc$/,'');
+    const curBase = sortKey.replace(/_desc$|_asc$/,'');
+    if (baseCol === curBase || col === sortKey) {
+      icon.textContent = sortKey.endsWith('_asc') ? ' ▲' : ' ▼';
+      icon.style.color = 'var(--ac)';
+    } else {
+      icon.textContent = '';
+    }
+  });
+  // ヘッダー自体の色
+  document.querySelectorAll('.ul-sort').forEach(th => {
+    const col = th.dataset.col;
+    const baseCol = col.replace(/_desc$|_asc$/,'');
+    const curBase = sortKey.replace(/_desc$|_asc$/,'');
+    th.style.color = (baseCol === curBase || col === sortKey) ? 'var(--ac)' : '';
+  });
+
+  const stateLabel = { active: '✅ 活動あり', pt_inactive: '⚠️ PTあり未活動', no_pt: '🔴 PT枯渇', no_login: '⬜ 未ログイン' };
+  const stateColor = { active: 'var(--gn)', pt_inactive: 'var(--og)', no_pt: 'var(--rd)', no_login: 'var(--dm)' };
+
+  const activeFilters = [];
+  if (_uFilter !== 'all') activeFilters.push(stateLabel[_uFilter] || _uFilter);
+  if (_uSendMin > 0) activeFilters.push(`送信${_uSendMin}通以上`);
+  if (loginFrom || loginTo) activeFilters.push(`ログイン: ${loginFrom||'?'} 〜 ${loginTo||'?'}`);
+  const filterStr = activeFilters.length ? ` ｜ フィルター: ${activeFilters.join(' + ')}` : '';
+
+  document.getElementById('user-list-info').textContent =
+    `表示: ${filtered.length}人 / 全${_userListData.length}人${filterStr}`;
+
+  const rows = filtered.map(u => {
+    const consumeCell = u.consumed !== null
+      ? `<span style="color:${u.consumed > 0 ? 'var(--cy)' : 'var(--dm)'}">
+          ${u.consumed > 0 ? '+' : ''}${u.consumed.toLocaleString()}pt
+         </span>`
+      : '<span style="color:var(--dm)">-</span>';
+    const replyCell = u.replyEst !== null && u.replyEst > 0
+      ? `<span style="color:var(--gn)">${u.replyEst}通</span>` : '-';
+    const sendColor = (u.sendCnt||0) >= 7 ? 'var(--og)' : (u.sendCnt||0) >= 1 ? 'var(--tx)' : 'var(--dm)';
+    const loginColor = u.isToday ? 'var(--gn)' : u.lastDay ? 'var(--dm)' : 'var(--rd)';
+    const loginStr = u.lastDay || '未記録';
+
+    return `<tr>
+      <td style="text-align:left;padding-left:10px;min-width:130px">
+        <div style="font-weight:600;font-size:12px">${esc(u.name) || '-'}</div>
+        <div style="font-size:10px;color:var(--dm);font-family:monospace">${u.mid}</div>
+      </td>
+      <td style="text-align:left;font-size:11px">${u.dayLabel ? esc(u.dayLabel) : '-'}</td>
+      <td style="font-family:monospace;color:${(u.curPt||0) > 0 ? 'var(--pp)' : 'var(--dm)'}">
+        ${(u.curPt||0).toLocaleString()}pt
+      </td>
+      <td>${consumeCell}</td>
+      <td>${replyCell}</td>
+      <td style="font-family:monospace;color:${sendColor}">${(u.sendCnt||0).toLocaleString()}</td>
+      <td style="font-family:monospace;font-size:11px;color:${loginColor}">${loginStr}</td>
+      <td style="color:${stateColor[u.state]};font-size:11px">${stateLabel[u.state]}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('user-list-body').innerHTML = rows || '<tr><td colspan="8" style="text-align:center;color:var(--dm);padding:20px">該当なし</td></tr>';
+
+  window._copyIds = filtered.map(u => u.mid);
+}
+
+function copyUserIds() {
+  if (!window._copyIds || !window._copyIds.length) { alert('表示中のユーザーがいません'); return; }
+  const text = window._copyIds.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('btn-copy-ids');
+    btn.textContent = `✅ ${window._copyIds.length}件コピー完了`;
+    setTimeout(() => { btn.textContent = '📋 表示中をコピー'; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert(window._copyIds.length + '件のIDをコピーしました');
+  });
+}
+
 </script>
 </body>
 </html>

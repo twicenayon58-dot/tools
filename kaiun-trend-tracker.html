@@ -157,23 +157,25 @@ tr:last-child td{border-bottom:none}
     <button class="tab" data-tab="monthly">📊 月次</button>
     <button class="tab" data-tab="compare">🔀 比較</button>
     <button class="tab" data-tab="segment">👥 セグメント</button>
+    <button class="tab" data-tab="unique">🎯 ユニーク分析</button>
     <button class="tab" data-tab="mtg">📋 MTG</button>
   </div>
 
   <!-- 日次 -->
   <div class="tc active" id="tab-daily">
     <div class="mc-row" id="mc-daily"></div>
+    <div id="noon-compare-area"></div>
     <div class="goal-bar">
       <div style="font-size:12px;font-weight:700;margin-bottom:10px">🎯 目標設定</div>
       <div class="row">
-        <label>月間目標ログイン（合計）</label>
-        <input type="number" class="gi" id="g-month-login" value="12000">
-        <span style="font-size:11px;color:var(--dm)">→ 日次: <b id="g-day-login">-</b></span>
+        <label>月間MAU目標（ユニーク）</label>
+        <input type="number" class="gi" id="g-month-login" value="" placeholder="例: 8000">
+        <span style="font-size:11px;color:var(--dm)">設定値: <b id="g-day-login">未設定</b></span>
       </div>
       <div class="row">
-        <label>月間目標返信（合計）</label>
-        <input type="number" class="gi" id="g-month-reply" value="1800">
-        <span style="font-size:11px;color:var(--dm)">→ 日次: <b id="g-day-reply">-</b></span>
+        <label>月間ユニーク返信者目標</label>
+        <input type="number" class="gi" id="g-month-reply" value="" placeholder="例: 2000">
+        <span style="font-size:11px;color:var(--dm)">設定値: <b id="g-day-reply">未設定</b></span>
       </div>
       <button class="btn" onclick="renderAll()" style="margin-top:6px">適用</button>
     </div>
@@ -301,6 +303,72 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 
+  <!-- ユニーク分析 -->
+  <div class="tc" id="tab-unique">
+    <div class="note">💡 WAU = 7日間で1回でもログインした人の数（重複除去）。同じ人が毎日来ても1人。経営判断の基準指標。</div>
+
+    <!-- KPI カード -->
+    <div class="mc-row" id="mc-unique"></div>
+
+    <!-- 週次ユニーク推移グラフ -->
+    <div class="cw">
+      <div class="ct">📈 週次ユニークログイン推移（WAU）</div>
+      <div class="cs">各週で1回以上ログインしたユニーク人数の推移。これが本当の「生きている会員数」</div>
+      <div style="position:relative;height:260px"><canvas id="c-wau-trend"></canvas></div>
+      <div class="lgd">
+        <div class="lgd-i"><div class="lgd-d" style="background:#3b82f6"></div>WAU（週ユニーク）</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#10b981"></div>週ユニーク返信者</div>
+        <div class="lgd-i"><div class="lgd-d" style="background:#9f7fff"></div>週ユニーク課金者</div>
+      </div>
+    </div>
+
+    <!-- WAU内訳 + エンゲージ率・転換率 -->
+    <div class="two-col">
+      <div class="cw">
+        <div class="ct">👥 直近7日間 WAU内訳</div>
+        <div class="cs">セグメント別のユニーク人数（重複除去済み）</div>
+        <div id="wau-breakdown"></div>
+      </div>
+      <div class="cw">
+        <div class="ct">📊 稼働率・エンゲージ率・転換率（直近7日）</div>
+        <div class="cs">WAUベースで計算したファネル指標</div>
+        <div id="wau-funnel"></div>
+      </div>
+    </div>
+
+    <!-- 広告コード別ユニーク（直近7日） -->
+    <div class="cw">
+      <div class="ct">🏷 広告コード別 週次ユニーク（直近7日）</div>
+      <div class="cs">どの流入元が今週動いているか。IDリストベースで重複除去。</div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>広告コード</th>
+          <th>ログイン（ユニーク）</th>
+          <th>返信（ユニーク）</th>
+          <th>返信率</th>
+          <th>前週比</th>
+        </tr></thead>
+        <tbody id="tb-adcode-unique"></tbody>
+      </table></div>
+    </div>
+
+    <!-- ステータス別ユニーク（直近7日） -->
+    <div class="cw">
+      <div class="ct">📋 ステータス別 週次ユニーク（直近7日）</div>
+      <div class="cs">どの日目の人が今週来ているか。離脱ポイントの特定に使う。</div>
+      <div class="tw"><table>
+        <thead><tr>
+          <th>ステータス（日目）</th>
+          <th>ログイン（ユニーク）</th>
+          <th>返信（ユニーク）</th>
+          <th>返信率</th>
+          <th>前週比</th>
+        </tr></thead>
+        <tbody id="tb-status-unique"></tbody>
+      </table></div>
+    </div>
+  </div>
+
   <!-- MTG -->
   <div class="tc" id="tab-mtg">
     <div class="note">💡 このページの数字をそのままMTGで使用できます。Ctrl+P（または⌘+P）でPDF出力可。</div>
@@ -367,12 +435,29 @@ function loadFiles(files){
         timeSlot:d.timeSlot||'night',
         login:d.login||(d.loginIds?d.loginIds.length:0),
         reply:d.reply||(d.replyIds?d.replyIds.length:0),
+        total:d.total||0,
+        totalPaid:d.totalPaid||0,
+        totalUnpaid:d.totalUnpaid||0,
         login_new:d.login_new||0,
         login_paid:d.login_paid||0,
         login_unpaid:d.login_unpaid||0,
         login_ad:d.login_ad||0,
         login_csv:d.login_csv||0,
-        loginIds:d.loginIds||[],replyIds:d.replyIds||[]
+        reply_paid:d.reply_paid||0,
+        reply_unpaid:d.reply_unpaid||0,
+        reply_new:d.reply_new||0,
+        loginIds:d.loginIds||[],
+        replyIds:d.replyIds||[],
+        loginIds_new:d.loginIds_new||[],
+        loginIds_paid:d.loginIds_paid||[],
+        loginIds_unpaid:d.loginIds_unpaid||[],
+        loginIds_ad:d.loginIds_ad||[],
+        loginIds_csv:d.loginIds_csv||[],
+        replyIds_paid:d.replyIds_paid||[],
+        replyIds_unpaid:d.replyIds_unpaid||[],
+        replyIds_new:d.replyIds_new||[],
+        adCodeStats:d.adCodeStats||{},
+        statusStats:d.statusStats||{}
       };
       if(idx>=0)D[idx]=nd;else D.push(nd);
     });
@@ -396,14 +481,13 @@ document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.getElementById('tab-'+t.dataset.tab).classList.add('active');
 }));
 
-// ===== 目標計算 =====
+// ===== 目標設定 =====
 function goalDaily(){
-  const gml=parseInt(document.getElementById('g-month-login').value)||12000;
-  const gmr=parseInt(document.getElementById('g-month-reply').value)||1800;
-  const days=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
-  document.getElementById('g-day-login').textContent=Math.round(gml/days).toLocaleString();
-  document.getElementById('g-day-reply').textContent=Math.round(gmr/days).toLocaleString();
-  return{login:Math.round(gml/days),reply:Math.round(gmr/days),monthLogin:gml,monthReply:gmr};
+  const gml=parseInt(document.getElementById('g-month-login').value)||0;
+  const gmr=parseInt(document.getElementById('g-month-reply').value)||0;
+  document.getElementById('g-day-login').textContent=gml>0?gml.toLocaleString()+'人/月':'未設定';
+  document.getElementById('g-day-reply').textContent=gmr>0?gmr.toLocaleString()+'人/月':'未設定';
+  return{monthLogin:gml||null, monthReply:gmr||null};
 }
 
 // ===== LINEAR REGRESSION =====
@@ -415,6 +499,181 @@ function linReg(arr){
   const sp=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0);
   const slope=sp/ss,intercept=my-slope*mx;
   return{slope,intercept,predict:x=>slope*x+intercept};
+}
+
+// ===== ユニーク計算ユーティリティ =====
+// n日分のデータからfieldのIDを重複除去してユニーク数を返す
+function uq(days, field){
+  const s=new Set();
+  days.forEach(d=>(d[field]||[]).forEach(id=>s.add(id)));
+  return s.size;
+}
+// 週ごとのユニーク計算
+function calcWeeklyUnique(){
+  // 夜データのみ使用（週単位で重複除去）
+  const base=getBaseData();
+  const wmap={};
+  base.forEach(d=>{
+    const k=gw(d.date);
+    if(!wmap[k])wmap[k]=[];
+    wmap[k].push(d);
+  });
+  return Object.entries(wmap).sort((a,b)=>a[0].localeCompare(b[0])).map(([key,days])=>{
+    const uLogin=uq(days,'loginIds');
+    const uReply=uq(days,'replyIds');
+    const uPaid=uq(days,'loginIds_paid');
+    const uUnpaid=uq(days,'loginIds_unpaid');
+    const uNew=uq(days,'loginIds_new');
+    const uAd=uq(days,'loginIds_ad');
+    const uCsv=uq(days,'loginIds_csv');
+    // 広告コード別集計
+    const adMap={};
+    days.forEach(d=>Object.entries(d.adCodeStats||{}).forEach(([code,stat])=>{
+      if(!adMap[code])adMap[code]={loginIds:new Set(),replyIds:new Set()};
+      (stat.loginIds||[]).forEach(id=>adMap[code].loginIds.add(id));
+      (stat.replyIds||[]).forEach(id=>adMap[code].replyIds.add(id));
+    }));
+    // ステータス別集計
+    const stMap={};
+    days.forEach(d=>Object.entries(d.statusStats||{}).forEach(([status,stat])=>{
+      if(!stMap[status])stMap[status]={loginIds:new Set(),replyIds:new Set()};
+      (stat.loginIds||[]).forEach(id=>stMap[status].loginIds.add(id));
+      (stat.replyIds||[]).forEach(id=>stMap[status].replyIds.add(id));
+    }));
+    const adStats=Object.fromEntries(Object.entries(adMap).map(([k,v])=>[k,{login:v.loginIds.size,reply:v.replyIds.size}]));
+    const stStats=Object.fromEntries(Object.entries(stMap).map(([k,v])=>[k,{login:v.loginIds.size,reply:v.replyIds.size}]));
+    const total=days[0]?.total||0;
+    return{key,days:days.length,uLogin,uReply,uPaid,uUnpaid,uNew,uAd,uCsv,total,adStats,stStats};
+  });
+}
+
+// ===== ユニーク分析レンダリング =====
+function renderUnique(){
+  const wuArr=calcWeeklyUnique();
+  const n=wuArr.length;
+  if(!n)return;
+  const lw=wuArr[n-1];
+  const pw=n>=2?wuArr[n-2]:null;
+  const total=lw.total||D[D.length-1]?.total||0;
+
+  // 稼働率 = WAU / 総会員
+  const actRate=total>0?Math.round(lw.uLogin/total*100):0;
+  // エンゲージ率 = 週ユニーク返信者 / WAU
+  const engRate=lw.uLogin>0?Math.round(lw.uReply/lw.uLogin*100):0;
+  // 課金転換率 = 週ユニーク課金ログイン / WAU
+  const convRate=lw.uLogin>0?Math.round(lw.uPaid/lw.uLogin*100):0;
+
+  // KPIカード
+  const wauDiff=pw?ds(lw.uLogin,pw.uLogin):'-';
+  const wauDiffCls=pw?lw.uLogin>=pw.uLogin?'up':'dn':'eq';
+  document.getElementById('mc-unique').innerHTML=`
+    <div class="mc ${pw&&lw.uLogin<pw.uLogin*0.85?'red':pw&&lw.uLogin>pw.uLogin?'green':''}">
+      <div class="ml">WAU（週ユニークログイン）</div>
+      <div class="mv" style="color:#3b82f6">${lw.uLogin.toLocaleString()}</div>
+      <div class="ms ${wauDiffCls}">前週比 ${wauDiff}${pw?' ('+pw.uLogin+'人)':''}</div>
+    </div>
+    <div class="mc"><div class="ml">稼働率（WAU÷総会員）</div>
+      <div class="mv" style="color:${actRate>=30?'var(--gn)':actRate>=15?'var(--og)':'var(--rd)'}">${actRate}%</div>
+      <div class="ms">総会員 ${total.toLocaleString()}人</div>
+    </div>
+    <div class="mc"><div class="ml">週ユニーク返信者</div>
+      <div class="mv" style="color:var(--gn)">${lw.uReply.toLocaleString()}</div>
+      <div class="ms ${pw?lw.uReply>=pw.uReply?'up':'dn':'eq'}">前週比 ${pw?ds(lw.uReply,pw.uReply):'-'}</div>
+    </div>
+    <div class="mc"><div class="ml">エンゲージ率（返信÷WAU）</div>
+      <div class="mv" style="color:${engRate>=40?'var(--gn)':engRate>=20?'var(--og)':'var(--rd)'}">${engRate}%</div>
+      <div class="ms">WAU中の返信者割合</div>
+    </div>
+    <div class="mc"><div class="ml">週ユニーク課金ログイン</div>
+      <div class="mv" style="color:var(--pp)">${lw.uPaid.toLocaleString()}</div>
+      <div class="ms ${pw?lw.uPaid>=pw.uPaid?'up':'dn':'eq'}">前週比 ${pw?ds(lw.uPaid,pw.uPaid):'-'}</div>
+    </div>
+    <div class="mc"><div class="ml">課金者稼働率（課金÷WAU）</div>
+      <div class="mv" style="color:var(--pp)">${convRate}%</div>
+      <div class="ms">WAU中の課金者割合</div>
+    </div>`;
+
+  // WAU推移グラフ
+  kd('wau-trend');
+  cMap['wau-trend']=new Chart(document.getElementById('c-wau-trend'),{
+    data:{labels:wuArr.map(w=>fd(w.key)+'週'),datasets:[
+      {type:'line',label:'WAU',data:wuArr.map(w=>w.uLogin),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:0.3,pointRadius:4,borderWidth:2},
+      {type:'line',label:'週ユニーク返信',data:wuArr.map(w=>w.uReply),borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:2},
+      {type:'line',label:'週ユニーク課金',data:wuArr.map(w=>w.uPaid),borderColor:'#9f7fff',backgroundColor:'transparent',tension:0.3,pointRadius:3,borderWidth:1.5,borderDash:[4,3]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:10},autoSkip:true,maxTicksLimit:14}},y:{ticks:{font:{size:11}}}}}
+  });
+
+  // WAU内訳
+  const segRows=[
+    ['新規（0日目）',lw.uNew,pw?.uNew,'#f0aa40'],
+    ['課金者ログイン',lw.uPaid,pw?.uPaid,'#9f7fff'],
+    ['未課金者ログイン',lw.uUnpaid,pw?.uUnpaid,'#22cce0'],
+    ['純広告経由',lw.uAd,pw?.uAd,'#f06878'],
+    ['CSV系',lw.uCsv,pw?.uCsv,'#2dd4a0'],
+  ];
+  document.getElementById('wau-breakdown').innerHTML=segRows.map(([label,cur,prev,color])=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)">
+      <span style="font-size:12px;color:var(--dm)">${label}</span>
+      <span style="font-family:monospace;font-weight:700;color:${color}">${cur.toLocaleString()}人
+        ${prev!=null?`<span style="font-size:10px;color:${cur>=prev?'var(--gn)':'var(--rd)'}"> ${ds(cur,prev)}</span>`:''}
+      </span>
+    </div>`).join('');
+
+  // ファネル
+  document.getElementById('wau-funnel').innerHTML=`
+    <div style="margin-top:8px">
+      ${[
+        ['🔵 WAU（稼働）',lw.uLogin,total,actRate,'#3b82f6',30,15],
+        ['💬 エンゲージ（返信）',lw.uReply,lw.uLogin,engRate,'#10b981',40,20],
+        ['💳 課金ログイン',lw.uPaid,lw.uLogin,convRate,'#9f7fff',20,10],
+      ].map(([label,num,denom,rate,color,hi,lo])=>`
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px">${label}</span>
+            <span style="font-family:monospace;font-weight:700;color:${color}">${num.toLocaleString()} / ${denom.toLocaleString()} = <span style="color:${rate>=hi?'var(--gn)':rate>=lo?'var(--og)':'var(--rd)'}">${rate}%</span></span>
+          </div>
+          <div style="height:8px;background:var(--s3);border-radius:4px;overflow:hidden">
+            <div style="height:100%;width:${Math.min(100,rate)}%;background:${color};border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  // 広告コード別ユニーク（直近7日 vs 前週7日）
+  const adCur={},adPrev={};
+  if(n>=1)Object.entries(wuArr[n-1].adStats||{}).forEach(([k,v])=>adCur[k]=v);
+  if(n>=2)Object.entries(wuArr[n-2].adStats||{}).forEach(([k,v])=>adPrev[k]=v);
+  const allAdCodes=[...new Set([...Object.keys(adCur),...Object.keys(adPrev)])].sort((a,b)=>(adCur[b]?.login||0)-(adCur[a]?.login||0));
+  document.getElementById('tb-adcode-unique').innerHTML=allAdCodes.slice(0,20).map(code=>{
+    const c=adCur[code]||{login:0,reply:0};
+    const p=adPrev[code]||null;
+    return`<tr>
+      <td style="font-family:monospace;font-size:11px">${code}</td>
+      <td style="color:#3b82f6;font-weight:700">${c.login.toLocaleString()}</td>
+      <td style="color:var(--gn)">${c.reply.toLocaleString()}</td>
+      <td>${pct(c.reply,c.login)}</td>
+      <td class="${p?dc(c.login,p.login):''}">${p?ds(c.login,p.login):'-'}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--dm);padding:16px">広告コードデータなし（新形式のJSONを読み込むと表示されます）</td></tr>';
+
+  // ステータス別ユニーク
+  const stCur={},stPrev={};
+  if(n>=1)Object.entries(wuArr[n-1].stStats||{}).forEach(([k,v])=>stCur[k]=v);
+  if(n>=2)Object.entries(wuArr[n-2].stStats||{}).forEach(([k,v])=>stPrev[k]=v);
+  const allStatuses=[...new Set([...Object.keys(stCur),...Object.keys(stPrev)])].sort((a,b)=>(stCur[b]?.login||0)-(stCur[a]?.login||0));
+  document.getElementById('tb-status-unique').innerHTML=allStatuses.slice(0,30).map(st=>{
+    const c=stCur[st]||{login:0,reply:0};
+    const p=stPrev[st]||null;
+    return`<tr>
+      <td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${st}</td>
+      <td style="color:#3b82f6;font-weight:700">${c.login.toLocaleString()}</td>
+      <td style="color:var(--gn)">${c.reply.toLocaleString()}</td>
+      <td>${pct(c.reply,c.login)}</td>
+      <td class="${p?dc(c.login,p.login):''}">${p?ds(c.login,p.login):'-'}</td>
+    </tr>`;
+  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--dm);padding:16px">ステータスデータなし（新形式のJSONを読み込むと表示されます）</td></tr>';
 }
 
 // ===== メインレンダリング =====
@@ -438,6 +697,7 @@ function renderAll(){
   renderMonthly();
   renderCompare();
   renderSegment('all');
+  renderUnique();
   renderMTG();
 }
 
@@ -452,6 +712,20 @@ function buildAlerts(){
     if(diff<=-15)alerts.push({t:'danger',m:`🚨 直近7日ログイン合計が前週比 ${diff.toFixed(0)}%（${pl}→${rl}）。対策が必要です。`});
     else if(diff<=-8)alerts.push({t:'warn',m:`⚠️ 直近7日ログインが前週比 ${diff.toFixed(0)}%。やや下降傾向。`});
     else alerts.push({t:'ok',m:`✅ 直近7日ログイン合計：前週比 ${diff>=0?'+':''}${diff.toFixed(0)}%（${pl}→${rl}）`});
+  }
+  // WAUベースのアラート
+  const wuArr=calcWeeklyUnique();
+  const wn=wuArr.length;
+  if(wn>=2){
+    const lw=wuArr[wn-1],pw=wuArr[wn-2];
+    const wDiff=(lw.uLogin-pw.uLogin)/pw.uLogin*100;
+    if(wDiff<=-15)alerts.push({t:'danger',m:`🚨 WAU急落：前週比 ${wDiff.toFixed(0)}%（${pw.uLogin}→${lw.uLogin}人）。ユニーク会員の離脱が進んでいます。`});
+    else if(wDiff<=-8)alerts.push({t:'warn',m:`⚠️ WAU微減：前週比 ${wDiff.toFixed(0)}%（${pw.uLogin}→${lw.uLogin}人）`});
+    else if(wDiff>=10)alerts.push({t:'ok',m:`✅ WAU増加：前週比 +${wDiff.toFixed(0)}%（${pw.uLogin}→${lw.uLogin}人）`});
+    // エンゲージ率チェック
+    const engCur=lw.uLogin>0?Math.round(lw.uReply/lw.uLogin*100):0;
+    const engPrev=pw.uLogin>0?Math.round(pw.uReply/pw.uLogin*100):0;
+    if(engCur<engPrev-10)alerts.push({t:'warn',m:`⚠️ エンゲージ率低下：${engPrev}%→${engCur}%。ログインしても返信しない人が増えています（コンテンツ要確認）`});
   }
   // 最終日の前週同曜日比
   const last=D[n-1];
@@ -469,90 +743,130 @@ function renderDaily(){
   const g=goalDaily();
   const base=getBaseData();const n=base.length;
   const noon=getNoonData();
-  // 昼データ：今日の昼 vs 昨日の昼
   const lastNoon=noon[noon.length-1]||null;
   const prevNoon=noon.length>=2?noon[noon.length-2]:null;
-  D; // Dは全データ（表示用）
   const last=base[n-1]||D[D.length-1];
   const prev=n>=2?base[n-2]:(D.length>=2?D[D.length-2]:null);
   const same=D.slice(0,-1).reverse().find(d=>new Date(d.date).getDay()===new Date(last.date).getDay());
-  const r7=D.slice(-7);
-  const avg7l=Math.round(r7.reduce((s,d)=>s+d.login,0)/r7.length);
-  const avg7r=Math.round(r7.reduce((s,d)=>s+d.reply,0)/r7.length);
+  const r7=getBaseData().slice(-7);
 
-  // 今月進捗
+  // WAU（直近7日ユニーク）
+  const wau=uq(r7,'loginIds');
+  const wauReply=uq(r7,'replyIds');
+  const r7prev=getBaseData().slice(-14,-7);
+  const wauPrev=r7prev.length>0?uq(r7prev,'loginIds'):null;
+
+  // 今月ユニーク（MAU）— のべ合計ではなく重複除去
   const mk=gm(last.date);
-  const thisMonth=D.filter(d=>gm(d.date)===mk);
-  const mLoginSum=thisMonth.reduce((s,d)=>s+d.login,0);
-  const mReplySum=thisMonth.reduce((s,d)=>s+d.reply,0);
+  const thisMonthBase=getBaseData().filter(d=>gm(d.date)===mk);
+  const mau=uq(thisMonthBase,'loginIds');
+  const mauReply=uq(thisMonthBase,'replyIds');
   const daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
-  const elapsed=thisMonth.length;
-  const loginProg=Math.min(100,Math.round(mLoginSum/g.monthLogin*100));
-  const replyProg=Math.min(100,Math.round(mReplySum/g.monthReply*100));
-  const loginPace=elapsed>0?Math.round(mLoginSum/elapsed*daysInMonth):0;
+  const elapsed=thisMonthBase.length;
+  const mauProg=Math.min(100,g.monthLogin?Math.round(mau/g.monthLogin*100):0);
+  const mauReplyProg=Math.min(100,g.monthReply?Math.round(mauReply/g.monthReply*100):0);
+
+  // 前日比 = 前日の夜データ
+  const nights=getNightData();
+  const lastNightSnap=nights[nights.length-1]||null;
+  const prevDayNight=lastNightSnap
+    ? nights.slice().reverse().find(d=>d.date<lastNightSnap.date)
+    : null;
 
   document.getElementById('mc-daily').innerHTML=`
-    <div class="mc ${last.login<g.login*0.75?'red':last.login>=g.login?'green':''}">
-      <div class="ml">最終日ログイン</div><div class="mv">${last.login.toLocaleString()}</div>
-      <div class="ms ${last.login>=g.login?'up':'dn'}">目標${g.login}人 ${last.login>=g.login?'達成':(g.login-last.login)+'人不足'}</div>
-    </div>
-    <div class="mc"><div class="ml">前日比</div>
-      <div class="mv ${prev?last.login>=prev.login?'up':'dn':'eq'}">${prev?ds(last.login,prev.login):'-'}</div>
-      <div class="ms">${prev?prev.login+'人 ('+fd(prev.date)+')':'-'}</div>
+    <div class="mc">
+      <div class="ml">最終スナップ ログイン</div><div class="mv">${last.login.toLocaleString()}</div>
+      <div class="ms ${prevDayNight?last.login>=prevDayNight.login?'up':'dn':'eq'}">前日比 ${prevDayNight?ds(last.login,prevDayNight.login):'-'}${prevDayNight?' ('+prevDayNight.login+'人 '+fd(prevDayNight.date)+')':''}</div>
     </div>
     <div class="mc ${same&&last.login<same.login*0.75?'red':''}">
       <div class="ml">前週同曜日比</div>
       <div class="mv ${same?last.login>=same.login?'up':'dn':'eq'}">${same?ds(last.login,same.login):'-'}</div>
       <div class="ms">${same?same.login+'人 ('+fd(same.date)+dow(same.date)+'曜)':'-'}</div>
     </div>
-    <div class="mc"><div class="ml">7日平均ログイン</div><div class="mv">${avg7l.toLocaleString()}</div>
-      <div class="ms">目標比 ${Math.round(avg7l/g.login*100)}%</div>
+    <div class="mc ${wauPrev&&wau<wauPrev*0.85?'red':wauPrev&&wau>wauPrev?'green':''}">
+      <div class="ml">WAU（7日間ユニーク）</div>
+      <div class="mv" style="color:#3b82f6">${wau.toLocaleString()}</div>
+      <div class="ms ${wauPrev?wau>=wauPrev?'up':'dn':'eq'}">前週WAU比 ${wauPrev?ds(wau,wauPrev):'-'}${wauPrev?' ('+wauPrev+'人)':''}</div>
     </div>
-    <div class="mc"><div class="ml">最終日返信</div><div class="mv" style="color:var(--gn)">${last.reply.toLocaleString()}</div>
-      <div class="ms">返信率 ${pct(last.reply,last.login)}</div>
+    <div class="mc"><div class="ml">WAU返信者（7日間ユニーク）</div>
+      <div class="mv" style="color:var(--gn)">${wauReply.toLocaleString()}</div>
+      <div class="ms">返信率 ${pct(wauReply,wau)}</div>
     </div>
-    <div class="mc"><div class="ml">7日平均返信</div><div class="mv" style="color:var(--gn)">${avg7r.toLocaleString()}</div>
-      <div class="ms">返信率 ${pct(avg7r,avg7l)}</div>
+    <div class="mc"><div class="ml">MAU（今月ユニーク）</div>
+      <div class="mv" style="color:var(--cy)">${mau.toLocaleString()}</div>
+      <div class="ms">${g.monthLogin?'目標 '+g.monthLogin.toLocaleString()+' → '+mauProg+'%':'目標未設定'}</div>
+    </div>
+    <div class="mc"><div class="ml">MAU返信者（今月ユニーク）</div>
+      <div class="mv" style="color:var(--gn)">${mauReply.toLocaleString()}</div>
+      <div class="ms">返信率 ${pct(mauReply,mau)}</div>
     </div>`;
 
-  // 昼データ比較カード（ある場合のみ）
-  const noonCompareHtml = lastNoon ? `
+  // 昼スナップ比較 — 前スナップからの新規ユニーク（朝の動きを見る）
+  const noonCompareHtml = lastNoon ? (()=>{
+    // 前回スナップ = 昼ファイルの日付より前（または同日で昼より先に保存された夜）の最新夜ファイル
+    const nights=getNightData();
+    const prevNight=nights.slice().reverse().find(d=>d.date<lastNoon.date)
+      || nights.slice().reverse().find(d=>d.date===lastNoon.date)
+      || null;
+    const prevIds=new Set(prevNight?.loginIds||[]);
+    const noonIds=new Set(lastNoon.loginIds||[]);
+    const newUnique=[...noonIds].filter(id=>!prevIds.has(id)).length;
+    const noonDate=lastNoon.date;
+    const prevDate=prevNight?.date||null;
+    return`
     <div style="background:rgba(34,204,224,.06);border:1px solid rgba(34,204,224,.25);border-radius:10px;padding:13px 15px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--cy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📸 昼スナップ比較（${fd(lastNoon.date)}）</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px">
-        <div><div style="font-size:10px;color:var(--dm)">昼ログイン</div>
-          <div style="font-size:20px;font-weight:800;font-family:monospace;color:var(--cy)">${lastNoon.login.toLocaleString()}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--cy);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">
+        📸 昼スナップ（${fd(noonDate)}）← 前夜スナップ（${prevDate?fd(prevDate):'データなし'}）からの差分
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+        <div>
+          <div style="font-size:10px;color:var(--dm)">朝の新規ユニーク</div>
+          <div style="font-size:22px;font-weight:800;font-family:monospace;color:var(--cy)">${newUnique.toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--dm)">前回スナップ以降に初来訪</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--dm)">昼の総ログイン</div>
+          <div style="font-size:22px;font-weight:800;font-family:monospace;color:var(--tx)">${lastNoon.login.toLocaleString()}</div>
           <div style="font-size:11px;color:${prevNoon?lastNoon.login>=prevNoon.login?'var(--gn)':'var(--rd)':'var(--dm)'}">
-            前日昼比 ${prevNoon?ds(lastNoon.login,prevNoon.login):'-'}${prevNoon?' ('+prevNoon.login+'人)':''}
+            前日昼比 ${prevNoon?ds(lastNoon.login,prevNoon.login):'-'}
           </div>
         </div>
-        <div><div style="font-size:10px;color:var(--dm)">昼返信</div>
-          <div style="font-size:20px;font-weight:800;font-family:monospace;color:var(--gn)">${lastNoon.reply.toLocaleString()}</div>
-          <div style="font-size:11px;color:${prevNoon?lastNoon.reply>=prevNoon.reply?'var(--gn)':'var(--rd)':'var(--dm)'}">
-            前日昼比 ${prevNoon?ds(lastNoon.reply,prevNoon.reply):'-'}
-          </div>
+        <div>
+          <div style="font-size:10px;color:var(--dm)">昼返信</div>
+          <div style="font-size:22px;font-weight:800;font-family:monospace;color:var(--gn)">${lastNoon.reply.toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--dm)">返信率 ${pct(lastNoon.reply,lastNoon.login)}</div>
         </div>
-        <div><div style="font-size:10px;color:var(--dm)">21時予測（昼×1.8）</div>
-          <div style="font-size:20px;font-weight:800;font-family:monospace;color:var(--og)">${Math.round(lastNoon.login*1.8).toLocaleString()}</div>
-          <div style="font-size:11px;color:var(--dm)">目標 ${g.login} ${Math.round(lastNoon.login*1.8)>=g.login?'✅ 達成ペース':'⚠️ 不足ペース'}</div>
+        <div>
+          <div style="font-size:10px;color:var(--dm)">21時予測（昼×1.8）</div>
+          <div style="font-size:22px;font-weight:800;font-family:monospace;color:var(--og)">${Math.round(lastNoon.login*1.8).toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--dm)">${g.monthLogin?Math.round(lastNoon.login*1.8)>=(g.monthLogin/daysInMonth)?'✅ 日次ペース良好':'⚠️ ペース注意':''}</div>
         </div>
       </div>
-    </div>` : '';
-  document.getElementById('mc-daily').insertAdjacentHTML('afterend', noonCompareHtml);
+    </div>`;
+  })() : '';
+  document.getElementById('noon-compare-area').innerHTML = noonCompareHtml;
+
+  // 今月MAU進捗（ユニーク基準）
   document.getElementById('month-progress').innerHTML=`
     <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;margin-bottom:10px">📊 今月進捗（${mk.replace('-','年')}月 ${elapsed}/${daysInMonth}日）
-        <span style="font-size:11px;color:var(--dm);font-weight:400;margin-left:8px">このペースで続くと月間 ${loginPace.toLocaleString()}人（目標 ${g.monthLogin.toLocaleString()}人）</span>
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px">📊 今月MAU進捗（${mk.replace('-','年')}月 ${elapsed}/${daysInMonth}日）</div>
+      <div style="font-size:11px;color:var(--dm);margin-bottom:10px">
+        ユニーク人数（重複除去）。読込済み${elapsed}日分のデータから算出。
+        ${elapsed<7?'<span style="color:var(--og)">※データが少ないと実際のMAUより小さく出ます。夜ファイルを蓄積するほど正確になります。</span>':''}
       </div>
       <div class="prog-wrap">
-        <div class="prog-label"><span style="font-size:11px">ログイン累計 ${mLoginSum.toLocaleString()} / ${g.monthLogin.toLocaleString()}</span>
-          <span style="font-size:11px;color:${loginProg>=100?'var(--gn)':loginProg<70?'var(--rd)':'var(--og)'}">${loginProg}%</span></div>
-        <div class="prog-track"><div class="prog-fill" style="width:${loginProg}%;background:${loginProg>=100?'var(--gn)':loginProg<70?'var(--rd)':'var(--og)'}"></div></div>
+        <div class="prog-label">
+          <span style="font-size:11px">MAU（ユニークログイン）${mau.toLocaleString()}${g.monthLogin?' / '+g.monthLogin.toLocaleString():''}</span>
+          <span style="font-size:11px;color:${g.monthLogin?(mauProg>=100?'var(--gn)':mauProg<70?'var(--rd)':'var(--og)'):'var(--dm)'}">${g.monthLogin?mauProg+'%':'目標未設定'}</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:${g.monthLogin?mauProg:0}%;background:${g.monthLogin?(mauProg>=100?'var(--gn)':mauProg<70?'var(--rd)':'var(--og)'):'var(--dm)'}"></div></div>
       </div>
       <div class="prog-wrap" style="margin-top:8px">
-        <div class="prog-label"><span style="font-size:11px">返信累計 ${mReplySum.toLocaleString()} / ${g.monthReply.toLocaleString()}</span>
-          <span style="font-size:11px;color:${replyProg>=100?'var(--gn)':replyProg<70?'var(--rd)':'var(--og)'}">${replyProg}%</span></div>
-        <div class="prog-track"><div class="prog-fill" style="width:${replyProg}%;background:${replyProg>=100?'var(--gn)':replyProg<70?'var(--rd)':'var(--og)'}"></div></div>
+        <div class="prog-label">
+          <span style="font-size:11px">月間ユニーク返信者 ${mauReply.toLocaleString()}${g.monthReply?' / '+g.monthReply.toLocaleString():''}</span>
+          <span style="font-size:11px;color:${g.monthReply?(mauReplyProg>=100?'var(--gn)':mauReplyProg<70?'var(--rd)':'var(--og)'):'var(--dm)'}">${g.monthReply?mauReplyProg+'%':'目標未設定'}</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" style="width:${g.monthReply?mauReplyProg:0}%;background:${g.monthReply?(mauReplyProg>=100?'var(--gn)':mauReplyProg<70?'var(--rd)':'var(--og)'):'var(--dm)'}"></div></div>
       </div>
     </div>`;
 
@@ -570,7 +884,7 @@ function renderDaily(){
     data:{labels,datasets:[
       {type:'bar',data:show.map(d=>d.login),backgroundColor:show.map((d,i)=>d.login<(alertLine[i]||0)?'rgba(240,104,120,.7)':'rgba(59,130,246,.65)'),borderRadius:3},
       {type:'line',data:show.map(d=>d.reply),borderColor:'#10b981',backgroundColor:'transparent',tension:0.3,pointRadius:2,borderWidth:2},
-      {type:'line',data:show.map(()=>g.login),borderColor:'rgba(240,170,64,.55)',backgroundColor:'transparent',borderDash:[5,4],pointRadius:0,borderWidth:1.5},
+      {type:'line',data:show.map(()=>null),borderColor:'rgba(240,170,64,.55)',backgroundColor:'transparent',borderDash:[5,4],pointRadius:0,borderWidth:1.5},
       {type:'line',data:alertLine,borderColor:'rgba(240,104,120,.5)',backgroundColor:'transparent',borderDash:[3,3],pointRadius:0,borderWidth:1.5}
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
@@ -663,10 +977,10 @@ function renderMonthly(){
   const lm=ms[n-1],pm=n>=2?ms[n-2]:null;
   document.getElementById('mc-monthly').innerHTML=`
     <div class="mc ${pm&&lm.l<pm.l*0.85?'red':pm&&lm.l>pm.l?'green':''}">
-      <div class="ml">今月ログイン累計</div><div class="mv">${lm.l.toLocaleString()}</div>
+      <div class="ml">今月MAU（ユニーク）</div><div class="mv">${lm.l.toLocaleString()}</div>
       <div class="ms">日平均 ${Math.round(lm.l/lm.days.length).toLocaleString()}（${lm.days.length}日）</div>
     </div>
-    <div class="mc"><div class="ml">今月返信累計</div><div class="mv" style="color:var(--gn)">${lm.r.toLocaleString()}</div>
+    <div class="mc"><div class="ml">今月ユニーク返信者</div><div class="mv" style="color:var(--gn)">${lm.r.toLocaleString()}</div>
       <div class="ms">返信率 ${pct(lm.r,lm.l)}</div>
     </div>
     ${pm?`<div class="mc ${lm.l<pm.l*0.85?'red':lm.l>pm.l?'green':''}">
@@ -682,10 +996,10 @@ function renderMonthly(){
   const reg=linReg(loginVals);
   const forecastLabels=[...ms.map(m=>m.key.replace('-','年')+'月'),'1ヶ月後','2ヶ月後','3ヶ月後'];
   const forecastLogin=[...ms.map(m=>m.l),null,null,null];
-  const trendLine=[...loginVals.map((_,i)=>Math.round(reg.predict(i)*ms[ms.map(m=>Math.round(m.l/m.days.length)).indexOf(_)].days.length||reg.predict(i)*30))];
+  const trendLine=reg?loginVals.map((_,i)=>Math.round(reg.predict(i)*avgDays)):loginVals.slice();
   // 直近3ヶ月の平均日数で予測
   const avgDays=Math.round(ms.slice(-3).reduce((s,m)=>s+m.days.length,0)/Math.min(3,ms.length));
-  [1,2,3].forEach(i=>trendLine.push(Math.round(reg.predict(ms.length-1+i)*avgDays)));
+  if(reg)[1,2,3].forEach(i=>trendLine.push(Math.round(reg.predict(ms.length-1+i)*avgDays)));
 
   kd('monthly');
   cMap['monthly']=new Chart(document.getElementById('c-monthly'),{
@@ -842,24 +1156,29 @@ function renderSegment(seg){
 // ===== MTG =====
 function renderMTG(){
   const n=D.length;
+  if(n===0)return;
   const total=D.reduce((s,d)=>s+d.login,0);
   const avgL=Math.round(total/n);
   const totalR=D.reduce((s,d)=>s+d.reply,0);
   const ms=getMonths();
   const wks=getWeeks();
 
+  const base=getBaseData();
+  const wauAll=uq(base.slice(-7),'loginIds');
+  const mauAll=uq(base.filter(d=>gm(d.date)===gm(base[base.length-1]?.date||'')),'loginIds');
+
   document.getElementById('mc-mtg').innerHTML=`
-    <div class="mc"><div class="ml">全期間ログイン（のべ合計）</div><div class="mv">${total.toLocaleString()}</div><div class="ms">${n}日分</div></div>
-    <div class="mc"><div class="ml">全期間日次平均</div><div class="mv">${avgL.toLocaleString()}</div><div class="ms">ログイン/日</div></div>
-    <div class="mc"><div class="ml">全期間返信（のべ合計）</div><div class="mv" style="color:var(--gn)">${totalR.toLocaleString()}</div><div class="ms">日平均 ${Math.round(totalR/n)}</div></div>
-    <div class="mc"><div class="ml">全期間平均返信率</div><div class="mv">${pct(totalR,total)}</div></div>`;
+    <div class="mc"><div class="ml">日次平均ログイン（直近7日）</div><div class="mv">${avgL.toLocaleString()}</div><div class="ms">${n}スナップ読込済み</div></div>
+    <div class="mc"><div class="ml">WAU（直近7日ユニーク）</div><div class="mv" style="color:#3b82f6">${wauAll.toLocaleString()}</div><div class="ms">重複除去・実質アクティブ数</div></div>
+    <div class="mc"><div class="ml">MAU（今月ユニーク）</div><div class="mv" style="color:var(--cy)">${mauAll.toLocaleString()}</div><div class="ms">重複除去・今月来訪者数</div></div>
+    <div class="mc"><div class="ml">平均返信率（直近）</div><div class="mv">${pct(totalR,total)}</div><div class="ms">日次平均返信 ${Math.round(totalR/n)}人</div></div>`;
 
   // トレンド予測
   const wAvg=wks.map(w=>Math.round(w.l/w.days.length));
-  const reg=linReg(wAvg);
+  const reg=wAvg.length>=2?linReg(wAvg):null;
   const futureLabels=[...wks.map(w=>fd(w.key)),'1週後','2週後','3週後','4週後','5週後','6週後','7週後','8週後','9週後','10週後','11週後','12週後'];
-  const trendFull=wAvg.map((_,i)=>Math.round(reg.predict(i)));
-  [1,2,3,4,5,6,7,8,9,10,11,12].forEach(i=>trendFull.push(Math.round(reg.predict(wAvg.length-1+i))));
+  const trendFull=reg?wAvg.map((_,i)=>Math.round(reg.predict(i))):wAvg.slice();
+  if(reg)[1,2,3,4,5,6,7,8,9,10,11,12].forEach(i=>trendFull.push(Math.round(reg.predict(wAvg.length-1+i))));
   const actualFull=[...wAvg,...Array(12).fill(null)];
 
   kd('mtg-trend');
@@ -884,9 +1203,9 @@ function renderMTG(){
   });
 
   // インサイト
-  const slope3m=reg.slope;
+  const slope3m=reg?reg.slope:0;
   const trend=slope3m>1?'上昇傾向':slope3m<-1?'下降傾向':'横ばい';
-  const projected3m=Math.round(reg.predict(wks.length+11)); // 3ヶ月後の週次平均予測
+  const projected3m=reg?Math.round(reg.predict(wks.length+11)):(wAvg[wAvg.length-1]||0); // 3ヶ月後の週次平均予測
   const projected3mMonth=projected3m*30;
 
   let insight=`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:16px">

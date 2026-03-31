@@ -21,31 +21,31 @@ body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--tx);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   min-height:100vh;padding:40px;position:relative;overflow:hidden;
   background:
-    radial-gradient(ellipse at 50% 30%, rgba(34,204,224,.09) 0%, transparent 55%),
-    radial-gradient(ellipse at 15% 75%, rgba(45,212,160,.05) 0%, transparent 45%),
-    radial-gradient(ellipse at 85% 65%, rgba(91,127,255,.05) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 35%, rgba(34,204,224,.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(34,204,224,.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 20% 70%, rgba(34,204,224,.04) 0%, transparent 45%),
     var(--bg);
 }
 #drop-zone.hidden{display:none}
-/* 波紋リング */
+/* 六芒星的な装飾リング */
 #drop-zone::before{
-  content:'';position:absolute;width:580px;height:580px;border-radius:50%;
-  border:1px solid rgba(34,204,224,.07);
-  top:50%;left:50%;transform:translate(-50%,-52%);pointer-events:none;
+  content:'';position:absolute;width:560px;height:560px;border-radius:50%;
+  border:1px solid rgba(34,204,224,.08);top:50%;left:50%;transform:translate(-50%,-52%);
+  pointer-events:none;
 }
 #drop-zone::after{
   content:'';position:absolute;width:360px;height:360px;border-radius:50%;
-  border:1px solid rgba(34,204,224,.13);
-  top:50%;left:50%;transform:translate(-50%,-52%);pointer-events:none;
+  border:1px solid rgba(34,204,224,.14);top:50%;left:50%;transform:translate(-50%,-52%);
+  pointer-events:none;
 }
-.dz-logo{font-size:46px;margin-bottom:6px;filter:drop-shadow(0 0 20px rgba(34,204,224,.6));}
+.dz-logo{font-size:42px;margin-bottom:6px;filter:drop-shadow(0 0 16px rgba(34,204,224,.55));}
 .dz-sitename{
   font-size:26px;font-weight:800;letter-spacing:4px;
-  background:linear-gradient(135deg,#22cce0 0%,#2dd4a0 60%,#5b7fff 100%);
+  background:linear-gradient(135deg,#22cce0 0%,#2dd4a0 50%,#22cce0 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  margin-bottom:4px;
+  text-shadow:none;margin-bottom:4px;
 }
-.dz-subtitle{font-size:11px;color:var(--dm);letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;opacity:.6}
+.dz-subtitle{font-size:11px;color:var(--dm);letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;opacity:.7}
 #drop-zone h1{display:none}
 #drop-zone>p{display:none}
 .drop-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;position:relative;z-index:1}
@@ -202,6 +202,12 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 .debug-box strong{color:var(--tx)}
 @media(max-width:900px){.two-col,.phase-row{grid-template-columns:1fr}}
 @media(max-width:768px){#dashboard{padding:12px}.summary-row{grid-template-columns:repeat(2,1fr)}.phase-grid{grid-template-columns:repeat(2,1fr)}}
+.stbtn{background:var(--s2);border:1px solid var(--bd);color:var(--dm);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;font-family:inherit;transition:all .15s}
+.stbtn.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.btn-toggle{display:flex;gap:4px;flex-wrap:wrap}
+.btn-toggle button{background:var(--s2);border:1px solid var(--bd);color:var(--dm);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit;transition:all .15s}
+.btn-toggle button:hover{border-color:var(--ac);color:var(--tx)}
+.btn-toggle button.active{background:var(--ac);border-color:var(--ac);color:#fff}
 </style>
 </head>
 <body>
@@ -252,6 +258,25 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 </div>
 
 <!-- DASHBOARD -->
+
+<!-- 純広告コード設定モーダル -->
+<div id="adcode-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(3px)">
+  <div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;width:480px;max-width:95vw;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:15px;font-weight:700">🏷 純広告コード設定</div>
+        <div style="font-size:11px;color:var(--dm);margin-top:3px">今月の純広告コードを1行1つで入力。これ以外は全てCSV系として集計されます。</div>
+      </div>
+      <button onclick="closeAdCodeModal()" style="background:none;border:none;color:var(--dm);font-size:18px;cursor:pointer;padding:4px 8px">✕</button>
+    </div>
+    <textarea id="adcode-input" placeholder="例：&#10;ad_20260301_lp1&#10;ad_20260315_fb&#10;&#10;（月0〜5本程度）" style="width:100%;height:180px;background:var(--s2);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:13px;resize:vertical;outline:none;line-height:1.8"></textarea>
+    <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+      <button onclick="saveAdCodes()" style="background:var(--ac);border:none;color:#fff;padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;flex:1">保存</button>
+      <button onclick="closeAdCodeModal()" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:9px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit">キャンセル</button>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--dm)">※ ブラウザに保存されます。翌月は上書き入力するだけでOK。</div>
+  </div>
+</div>
 <div id="dashboard">
   <div class="header">
     <h1>〇 天賜の泉</h1>
@@ -265,8 +290,29 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
         style="background:var(--gn-bg);border-color:var(--gn);color:var(--gn);font-weight:700">
         💾 夜の記録（21時）
       </button>
+      <button class="btn" onclick="openAdCodeModal()" title="今月の純広告コードを設定">
+        🏷 純広告コード設定
+      </button>
       <button class="btn" onclick="location.reload()">← やり直す</button>
     </div>
+  </div>
+  <!-- データ表示切り替えトグル -->
+  <div id="seg-toggle-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    <span style="font-size:12px;color:var(--dm);font-weight:600">表示対象：</span>
+    <button class="seg-toggle-btn active" data-seg="all" onclick="setSegFilter('all',this)"
+      style="padding:6px 18px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--ac);color:#fff;transition:all .15s">
+      全体
+    </button>
+    <button class="seg-toggle-btn" data-seg="csv" onclick="setSegFilter('csv',this)"
+      style="padding:6px 18px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--s2);color:var(--dm);transition:all .15s">
+      CSV系
+    </button>
+    <button class="seg-toggle-btn" data-seg="ad" onclick="setSegFilter('ad',this)"
+      style="padding:6px 18px;border-radius:8px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--s2);color:var(--dm);transition:all .15s">
+      純広告
+    </button>
+    <span id="seg-filter-label" style="font-size:11px;color:var(--dm);margin-left:4px"></span>
+    <span style="font-size:11px;color:var(--dm);margin-left:auto">純広告コード未設定の場合は全員CSV系として扱います</span>
   </div>
   <div class="date-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
     <label style="font-size:12px;color:var(--dm)">対象日:</label>
@@ -275,15 +321,17 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
     <button class="btn" onclick="setToday()" style="font-size:12px">今日</button>
   </div>
   <div id="debug-info" class="debug-box"></div>
+  <!-- フィルター状態バナー -->
+  <div id="filter-banner" style="display:none;padding:8px 14px;border-radius:8px;margin-bottom:10px;font-size:12px;font-weight:700;text-align:center"></div>
 
   <!-- フェーズ別サマリーカード -->
   <div class="phase-row">
     <div class="phase-card step-phase">
-      <div class="phase-title"><span style="color:var(--gn)">▌</span>ステップ期間（0〜25日目）<span style="font-size:10px;color:var(--dm);font-weight:400">育成・初課金フェーズ</span></div>
+      <div class="phase-title"><span style="color:var(--gn)">▌</span>ステップ期間（0〜18日目）<span style="font-size:10px;color:var(--dm);font-weight:400">育成・初課金フェーズ</span></div>
       <div class="phase-grid" id="phase-step"></div>
     </div>
     <div class="phase-card post-phase">
-      <div class="phase-title"><span style="color:var(--og)">▌</span>ステップ終了後（登録ステップ完了等）<span style="font-size:10px;color:var(--dm);font-weight:400">売上最大化フェーズ（登録完了ステップ〜）</span></div>
+      <div class="phase-title"><span style="color:var(--og)">▌</span>ステップ終了後（新キャラ等）<span style="font-size:10px;color:var(--dm);font-weight:400">売上最大化フェーズ</span></div>
       <div class="phase-grid" id="phase-post"></div>
     </div>
   </div>
@@ -291,8 +339,8 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 
   <div class="tabs">
     <button class="tab active" data-tab="today">🔴 今日の状況</button>
-    <button class="tab" data-tab="step">① ステップ別（0〜25日目）</button>
-    <button class="tab" data-tab="post">② ステップ後（登録完了ステップ）</button>
+    <button class="tab" data-tab="step">① ステップ別（0〜27日目）</button>
+    <button class="tab" data-tab="post">② ステップ後（新キャラ等）</button>
     <button class="tab" data-tab="purchase">③ 課金者分析</button>
     <button class="tab" data-tab="adcode">④ 広告コード別</button>
     <button class="tab" data-tab="carrier">⑤ キャリア別</button>
@@ -303,6 +351,30 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 
   <!-- 今日の状況 -->
   <div class="tc active" id="tab-today">
+
+    <!-- 🎯 課金予備軍モニター（0〜3日目・未課金・今日ログイン・返信あり） -->
+    <div class="section" style="margin-bottom:16px">
+      <div class="stitle">🎯 課金予備軍モニター
+        <span class="hot-badge" style="background:rgba(91,127,255,.15);color:var(--ac);border-color:rgba(91,127,255,.3)">0〜3日目・未課金</span>
+        <span style="font-size:11px;color:var(--dm);font-weight:400">今日ログイン × 返信あり — 広告コード別</span>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th style="text-align:left">広告コード</th>
+            <th>在籍<br><span style="font-size:9px;font-weight:400">0〜3日目・未課金</span></th>
+            <th>今日ログイン</th>
+            <th>ログイン率</th>
+            <th style="color:var(--ac)">返信あり</th>
+            <th style="color:var(--ac)">返信率<br><span style="font-size:9px;font-weight:400">ログイン中</span></th>
+            <th style="color:var(--og)">日目内訳<br><span style="font-size:9px;font-weight:400">0日/1日/2日/3日</span></th>
+          </tr></thead>
+          <tbody id="tb-early-ad"></tbody>
+        </table>
+      </div>
+      <div class="note">💡 0〜3日目・未課金・今日ログイン・返信ありの層が課金予備軍。広告コード別に見ることで「どの流入元が質が高いか」が分かる。</div>
+    </div>
+
     <div class="two-col" style="margin-bottom:16px">
       <div>
         <div class="section">
@@ -359,7 +431,7 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
   <div class="tc" id="tab-step">
     <div class="section">
       <div class="note" style="margin-bottom:12px">
-        💡 登録0〜25日目のステップ期間。<span style="color:var(--gn)">■無料（0〜2日目）</span> <span style="color:var(--og)">■混在（複数キャラ同時）</span> <span style="color:var(--ac)">■有料</span>。数字クリックでID抽出。
+        💡 0〜27日目のステップ期間。<span style="color:var(--gn)">■無料</span> <span style="color:var(--og)">■境界（2.5日目）</span> <span style="color:var(--ac)">■有料</span>。数字クリックでID抽出。
       </div>
       <div class="tw">
         <table>
@@ -373,7 +445,7 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
           <tbody id="tb-step"></tbody>
         </table>
       </div>
-      <div class="note">※ 送信数＝ユーザーからの累計返信数。混在期（橙）は複数キャラが同時配信されるため課金判定は目視確認が必要。</div>
+      <div class="note">※ 送信数＝ユーザーからの累計返信数。7通以上返信で課金率が大きく変わるポイント。</div>
     </div>
   </div>
 
@@ -382,7 +454,7 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
     <div class="two-col">
       <div>
         <div class="section">
-          <div class="stitle">登録完了ステップ ラベル別サマリー</div>
+          <div class="stitle">ステップ後ラベル別サマリー</div>
           <div class="tw">
             <table>
               <thead><tr>
@@ -394,19 +466,19 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
           </div>
         </div>
         <div class="section">
-          <div class="stitle">登録完了ステップ 送信数分布</div>
+          <div class="stitle">ステップ後 送信数分布</div>
           <div class="tw">
             <table>
               <thead><tr><th>送信数</th><th>人数</th><th>うち課金者</th><th>課金率</th></tr></thead>
               <tbody id="tb-post-send"></tbody>
             </table>
           </div>
-          <div class="note">💡 登録完了ステップ以降は複数キャラが混在するため送信数は参考指標として使用。</div>
+          <div class="note">💡 ステップ後の送信数は他キャラ分も含むため参考指標として使用。</div>
         </div>
       </div>
       <div>
         <div class="section">
-          <div class="stitle">課金者のログイン継続（登録完了ステップのみ）</div>
+          <div class="stitle">課金者のログイン継続（ステップ後のみ）</div>
           <div class="tw">
             <table>
               <thead><tr><th>最終ログイン経過</th><th>課金者数</th><th>率</th></tr></thead>
@@ -416,7 +488,7 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
           <div class="note">💡 「7日超」が多い = 課金後に離脱。再エンゲージ施策の対象。</div>
         </div>
         <div class="section">
-          <div class="stitle">広告コード別（登録完了ステップ）</div>
+          <div class="stitle">広告コード別（ステップ後）</div>
           <div class="tw">
             <table>
               <thead><tr>
@@ -482,6 +554,11 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
     <div class="section">
       <div class="stitle">広告コード別 集計（全体）
         <span style="font-size:11px;color:var(--dm);font-weight:400">ヘッダークリックで並替</span>
+      </div>
+      <div id="adcode-legend" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:11px">
+        <span style="padding:3px 10px;border-radius:5px;background:rgba(240,170,64,.12);color:var(--og);border:1px solid rgba(240,170,64,.3)">🟠 純広告コード</span>
+        <span style="padding:3px 10px;border-radius:5px;background:rgba(34,204,224,.1);color:var(--cy);border:1px solid rgba(34,204,224,.25)">🔵 CSV系コード</span>
+        <span id="adcode-pure-count" style="color:var(--dm)"></span>
       </div>
       <div class="tw">
         <table>
@@ -683,6 +760,87 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
     <div id="act-no-snapshot" style="padding:24px;text-align:center;color:var(--dm);font-size:12px">
       📂 前回スナップショット（JSON）を読み込むと活動量差分が表示されます
     </div>
+
+    <!-- ユーザー一覧テーブル -->
+    <div class="section" id="user-list-section" style="margin-top:16px">
+      <!-- タイトル行 -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div class="stitle" style="margin:0">👤 ユーザー別詳細一覧</div>
+        <button id="btn-copy-ids" onclick="copyUserIds()" style="margin-left:auto;background:var(--ac);border:1px solid var(--ac);color:#fff;padding:5px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">📋 表示中をコピー</button>
+      </div>
+
+      <!-- フィルターバー -->
+      <div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start">
+
+        <!-- 状態フィルター -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">状態</span>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="stbtn on" data-ufilter="all" onclick="setUFilter('all',this)">全員</button>
+            <button class="stbtn" data-ufilter="active" onclick="setUFilter('active',this)">活動あり</button>
+            <button class="stbtn" data-ufilter="pt_inactive" onclick="setUFilter('pt_inactive',this)">PTあり未活動</button>
+            <button class="stbtn" data-ufilter="no_pt" onclick="setUFilter('no_pt',this)">PT枯渇</button>
+            <button class="stbtn" data-ufilter="no_login" onclick="setUFilter('no_login',this)">未ログイン</button>
+          </div>
+        </div>
+
+        <!-- 最終ログイン日フィルター -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">最終ログイン日</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="date" id="ul-login-from" onchange="renderUserList()"
+              style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+            <span style="color:var(--dm);font-size:11px">〜</span>
+            <input type="date" id="ul-login-to" onchange="renderUserList()"
+              style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+            <button onclick="clearULoginFilter()"
+              style="background:none;border:1px solid var(--bd);color:var(--dm);padding:3px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:inherit">クリア</button>
+          </div>
+        </div>
+
+        <!-- 送信数フィルター -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">送信数</span>
+          <div class="btn-toggle" id="ul-filter-send">
+            <button class="active" data-val="0">全員</button>
+            <button data-val="1">1通以上</button>
+            <button data-val="3">3通以上</button>
+            <button data-val="7">7通以上</button>
+          </div>
+        </div>
+
+        <!-- 並替 -->
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <span style="font-size:10px;color:var(--dm);font-weight:700;text-transform:uppercase;letter-spacing:.4px">並替</span>
+          <select id="user-sort" onchange="renderUserList()" style="background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:11px;font-family:inherit">
+            <option value="pt_desc">保有PT多い順</option>
+            <option value="login_desc">ログイン日（新しい順）</option>
+            <option value="login_asc">ログイン日（古い順）</option>
+            <option value="send_desc">送信数多い順</option>
+            <option value="consume_desc">消費PT多い順</option>
+            <option value="status">ステータス順</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="user-list-info" style="font-size:11px;color:var(--dm);margin-bottom:8px"></div>
+      <div class="tw" style="max-height:520px;overflow-y:auto">
+        <table id="user-list-table" style="font-size:12px">
+          <thead><tr>
+            <th style="text-align:left;padding-left:10px;min-width:130px">名前 / ID</th>
+            <th class="ul-sort" data-col="status" style="text-align:left;min-width:120px;cursor:pointer;user-select:none" title="クリックで並替">ステータス <span class="ul-sort-icon" data-col="status"></span></th>
+            <th class="ul-sort" data-col="pt_desc" style="cursor:pointer;user-select:none" title="クリックで並替">保有PT <span class="ul-sort-icon" data-col="pt_desc"></span></th>
+            <th id="th-consume" class="ul-sort" data-col="consume_desc" style="color:var(--cy);cursor:pointer;user-select:none" title="クリックで並替">消費PT <span class="ul-sort-icon" data-col="consume_desc"></span><br><span style="font-size:9px;color:var(--dm)">(スナップ差分)</span></th>
+            <th class="ul-sort" data-col="reply_desc" style="cursor:pointer;user-select:none" title="クリックで並替">推定返信 <span class="ul-sort-icon" data-col="reply_desc"></span></th>
+            <th class="ul-sort" data-col="send_desc" style="color:var(--gn);cursor:pointer;user-select:none" title="クリックで並替">送信数 <span class="ul-sort-icon" data-col="send_desc"></span></th>
+            <th class="ul-sort" data-col="login_desc" style="cursor:pointer;user-select:none" title="クリックで並替">最終ログイン <span class="ul-sort-icon" data-col="login_desc"></span></th>
+            <th>状態</th>
+          </tr></thead>
+          <tbody id="user-list-body"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <!-- 配信管理 -->
@@ -861,7 +1019,7 @@ td.id-flash{background:rgba(91,127,255,.22)!important;color:var(--ac)!important}
 const CC={MID:0,MOBILE_EMAIL:7,PC_EMAIL:8,AD_CODE:12,REG_DT:21,SUB_STATUS:23,CUR_PT:24,TOTAL_BUY_PT:25,TOTAL_USE_PT:26,AMT:27,BUY_CNT:29,FIRST_BUY:30,LAST_BUY:31};
 
 // ===== ステータスマッピング =====
-// 「新しいやつ三日月が飛ぶよ」 = 登録10日目
+// 天賜の泉 ステータスマッピング
 const STATUS_DAY_MAP={
   '0日目':0,'1日目':1,'2日目':2,'3日目':3,
   '4日目':4,'5日目':5,'6日目':6,'7日目':7,
@@ -871,20 +1029,12 @@ const STATUS_DAY_MAP={
   '20日目':20,'21日目':21,'22日目':22,'23日目':23,
   '24日目':24,'25日目':25,'26日目':26,'27日目':27
 };
-// ステップ期間のラベルセット
+const MIXED_DAYS={3:'陽向スタート',4:'陽向有料+結城無料',5:'陽向有料+結城無料',10:'天音無料混在',11:'天音無料混在',17:'大福無料混在',18:'大福無料混在'}
+// ステップ期間のラベルセット（天賜の泉: 0〜27日目）
 const STEP_LABELS=new Set(Object.keys(STATUS_DAY_MAP));
 // 表示用順序
 const STEP_ORDER=Object.entries(STATUS_DAY_MAP).sort((a,b)=>a[1]-b[1]).map(e=>e[0]);
-
-// ゾーン定義
-// 0〜2日目: 無料
-// 3日目: 有料開始（陽向）
-// 4〜5日目: 混在（陽向有料＋結城無料）
-// 6〜9日目: 有料
-// 10〜11日目: 混在（天音無料）
-// 12〜16日目: 有料
-// 17〜18日目: 混在（大福無料）
-// 19〜25日目: 有料
+// 無料/境界/有料ゾーン
 function zoneOf(lbl){
   const d=STATUS_DAY_MAP[lbl];
   if(d===undefined)return 'post';
@@ -897,8 +1047,7 @@ function zoneOf(lbl){
   if(d<=18)return 'border';  // 混在：大福無料
   return 'paid';
 }
-// 表示名（混在ゾーンは注記付き）
-const MIXED_DAYS={3:'陽向スタート',4:'陽向有料+結城無料',5:'陽向有料+結城無料',10:'天音無料混在',11:'天音無料混在',17:'大福無料混在',18:'大福無料混在'};
+// 表示名（MIXED_DAYSの注記を付与）
 function dispLabel(lbl){
   const d=STATUS_DAY_MAP[lbl];
   if(d!==undefined&&MIXED_DAYS[d])return lbl+'<span style="font-size:9px;color:var(--og);margin-left:4px">'+MIXED_DAYS[d]+'</span>';
@@ -938,6 +1087,8 @@ function rc(r){return r>=50?'rh':r>=25?'rm':'rl'}
 function yen(v){return v===0?'-':'¥'+Math.round(v).toLocaleString()}
 function todayStr(){const n=new Date(),j=new Date(n.getTime()+9*3600000);return j.getUTCFullYear()+'-'+String(j.getUTCMonth()+1).padStart(2,'0')+'-'+String(j.getUTCDate()).padStart(2,'0')}
 function gapBucket(days){if(days===null||!isFinite(days)||days<0)return 'over7';if(days===0)return 'today';if(days===1)return 'd1';if(days<=3)return 'd3';if(days<=7)return 'd7';return 'over7'}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 
 // ===== MODAL =====
 let currentIds=[];
@@ -1004,7 +1155,7 @@ function parseCSV(text){
 // ===== XLSX PARSE =====
 function parseXlsx(wb){
   const ws=wb.Sheets[wb.SheetNames[0]];
-  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
   const users={};let i=2;
   while(i<rows.length){
     const rA=rows[i]||[],rB=rows[i+1]||[];
@@ -1017,8 +1168,12 @@ function parseXlsx(wb){
       let lastDay='';
       const v=rA[12];
       if(v instanceof Date)lastDay=toJSTStr(v);
-      else if(typeof v==='string')lastDay=v.substring(0,10);
-      else if(typeof v==='number'){const d=new Date(Date.UTC(1899,11,30+Math.floor(v)));lastDay=toJSTStr(d);}
+      else if(typeof v==='string'&&v.length>=10){
+        // "2026-03-29 00:00:00" or "2026-03-29" 形式
+        const m=v.match(/^(\d{4}-\d{2}-\d{2})/);
+        if(m)lastDay=m[1];
+      }
+      else if(typeof v==='number'&&v>0){const d=new Date(Date.UTC(1899,11,30+Math.floor(v)));lastDay=toJSTStr(d);}
       let lastTime='';
       const vt=rB[12];
       if(vt instanceof Date)lastTime=`${String(vt.getHours()).padStart(2,'0')}:${String(vt.getMinutes()).padStart(2,'0')}`;
@@ -1035,9 +1190,11 @@ function parseXlsx(wb){
 // ===== MERGE =====
 function mergeData(csv,xl){
   const today=document.getElementById('target-date')?.value||todayStr();
+  _renderPureAdCodes=new Set((localStorage.getItem('tenshin_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
   return csv.map(row=>{
     const mid=String(row[CC.MID]||'').trim();
     const x=xl[mid]||{};
+    const name=String(row[2]||'').replace(/^"|"$/g,'').trim(); // C列=名前
     const email=x.email||String(row[CC.MOBILE_EMAIL]||'').trim()||String(row[CC.PC_EMAIL]||'').trim();
     const buyAmt=parseFloat(row[CC.AMT])||0;
     const buyCnt=parseInt(row[CC.BUY_CNT])||0;
@@ -1045,6 +1202,7 @@ function mergeData(csv,xl){
     const regDt=String(row[CC.REG_DT]||'').substring(0,10);
     const subStatus=String(row[CC.SUB_STATUS]||'').trim();
     const sendCnt=x.sendCnt||0;
+    const adCode=String(row[CC.AD_CODE]||'').trim()||x.adCode||'(なし)';
     const dayLabel=x.dayLabel||subStatus||'(不明)';
     const isStep=STEP_LABELS.has(dayLabel);
     const isToday=x.lastDay===today;
@@ -1054,12 +1212,12 @@ function mergeData(csv,xl){
     const regToBuy=(regDt&&firstBuy&&firstBuy.length===10)?Math.floor((new Date(firstBuy)-new Date(regDt))/86400000):null;
     const isPurchaser=buyAmt>0||buyCnt>0;
     const is7plus=sendCnt>=7;
-    const isHot=is7plus&&!isPurchaser;// 7通以上返信・未課金
+    const isHot=is7plus&&!isPurchaser;
     const curPt=parseInt(row[CC.CUR_PT])||0;
     const totalUsePt=parseInt(row[CC.TOTAL_USE_PT])||0;
-    return{mid,email,carrier:getCarrier(email),buyAmt,buyCnt,firstBuy,regDt,subStatus,
+    return{mid,name,email,carrier:getCarrier(email),buyAmt,buyCnt,firstBuy,regDt,subStatus,
       sendCnt,dayLabel,isStep,isToday,lGap,ipClass,lastHour,regToBuy,
-      isPurchaser,is7plus,isHot,ip:x.ip||'',adCode:x.adCode||String(row[CC.AD_CODE]||'').trim()||'(なし)',
+      isPurchaser,is7plus,isHot,ip:x.ip||'',adCode,
       curPt,totalUsePt};
   });
 }
@@ -1070,6 +1228,9 @@ let adcodeStore=null,adSortBound=false;
 function analyze(data){
   memberMap={};
   const today=todayStr();
+  // 純広告コードを毎回最新で更新（グローバルに反映）
+  _renderPureAdCodes=new Set((localStorage.getItem('tenshin_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+  _userMap={}; // グローバルをリセット
   // ステップ別
   const stepMap={};STEP_ORDER.forEach(l=>stepMap[l]={total:[],login:[],s0:[],s1:[],s2:[],s3:[],s4:[],s5:[],s6:[],s7p:[],hot:[],pur:[],amount:0});
   // ステップ後ラベル別
@@ -1097,6 +1258,8 @@ function analyze(data){
   function ensPost(k){if(!postLabels[k])postLabels[k]={total:[],login:[],pur:[],amount:0,sendDist:{s0:[],s1:[],s2:[],s3:[],s4:[],s5:[],s6:[],s7p:[]}};return postLabels[k]}
 
   data.forEach(u=>{
+    // midをキーにユーザーオブジェクトをキャッシュ（分類に使用）
+    _userMap[u.mid]=u;
     totalAmt+=u.buyAmt;
     const ad=ensAd(u.adCode);ad.total.push(u.mid);
     const cr=ensCr(u.carrier);cr.total.push(u.mid);
@@ -1170,6 +1333,11 @@ function render(res){
   const postPur=Object.values(postLabels).reduce((a,d)=>[...a,...d.pur],[]);
   const postAmt=Object.values(postLabels).reduce((s,d)=>s+d.amount,0);
   const allLogin=[...stepTotals.login,...postLogin];
+  const allLoginAd=allLogin.filter(mid=>{const u=_userMap[mid];return u&&isAdUser(u);});
+  const allLoginCsv=allLogin.filter(mid=>{const u=_userMap[mid];return u&&!isAdUser(u);});
+  const allLoginNew=allLogin.filter(mid=>{const u=_userMap[mid];return u&&u.dayLabel==='0日目';});
+  const allLoginPaid=allLogin.filter(mid=>{const u=_userMap[mid];return u&&u.isPurchaser&&u.dayLabel!=='0日目';});
+  const allLoginUnpaid=allLogin.filter(mid=>{const u=_userMap[mid];return u&&!u.isPurchaser&&u.dayLabel!=='0日目';});
   const botTotal=botCloud.length+botForeign.length;
 
   // ===== フェーズカード =====
@@ -1203,6 +1371,9 @@ function render(res){
   document.getElementById('summary-cards').innerHTML=`
     <div class="sc"><div class="l">総会員</div><div class="v">${total.toLocaleString()}</div></div>
     <div class="sc"><div class="l">今日ログイン</div><div class="v" style="color:var(--gn)">${allLogin.length.toLocaleString()}</div><div class="sb">${pct(allLogin.length,total)}</div></div>
+    <div class="sc"><div class="l">CSV系ログイン</div><div class="v" style="color:var(--cy)">${allLoginCsv.length.toLocaleString()}</div><div class="sb">${pct(allLoginCsv.length,allLogin.length)} (内訳)</div></div>
+    <div class="sc"><div class="l">純広告ログイン</div><div class="v" style="color:var(--og)">${allLoginAd.length.toLocaleString()}</div><div class="sb">${allLoginAd.length>0?pct(allLoginAd.length,allLogin.length)+' (内訳)':'純広告コード未設定'}</div></div>
+    <div class="sc" style="border-left:3px solid var(--og)"><div class="l">新規（0日目）</div><div class="v" style="color:var(--og)">${allLoginNew.length.toLocaleString()}</div><div class="sb">流入指標</div></div>
     <div class="sc highlight"><div class="l">7通以上未課金</div><div class="v" style="color:var(--og)">${stepTotals.hot.length.toLocaleString()}</div><div class="sb">課金候補</div></div>
     <div class="sc"><div class="l">累計課金者</div><div class="v" style="color:var(--pp)">${purAll.length.toLocaleString()}</div><div class="sb">${pct(purAll.length,total)}</div></div>
     <div class="sc"><div class="l">累計売上</div><div class="v" style="color:var(--og);font-size:17px">¥${Math.round(totalAmt).toLocaleString()}</div></div>
@@ -1259,7 +1430,7 @@ function render(res){
       ${cTd(d.total,'在籍：'+l)}
       ${cTd(d.login,'今日ログイン：'+l)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>
       ${cTd(d.s0,'送信0件：'+l,'color:var(--rd)')}
-      ${(()=>{const t=[...d.s1,...d.s2,...d.s3,...d.s4,...d.s5,...d.s6,...d.s7p];return t.length>0?cTd(t,'送信合計：'+l,'color:var(--cy)'):'<td style="color:var(--dm)">-</td>';})()}
+      ${(()=>{const total=[...d.s1,...d.s2,...d.s3,...d.s4,...d.s5,...d.s6,...d.s7p];return total.length>0?cTd(total,'送信合計：'+l,'color:var(--cy)'):'<td style="color:var(--dm)">-</td>';})()}
       ${cTd(d.s1,'送信1件：'+l)}
       ${cTd(d.s2,'送信2件：'+l)}
       ${cTd(d.s3,'送信3件：'+l)}
@@ -1354,6 +1525,10 @@ function render(res){
         <td>${totalSend.toLocaleString()}</td>
       </tr>`;
     }).join('');
+  // 純広告コード件数表示（グローバルも更新）
+  _renderPureAdCodes=new Set((localStorage.getItem('tenshin_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+  const _pcEl=document.getElementById('adcode-pure-count');
+  if(_pcEl)_pcEl.textContent=_renderPureAdCodes.size>0?`純広告コード設定済み: ${_renderPureAdCodes.size}件`:'（純広告コード未設定 → 右上「🏷 純広告コード設定」から入力）';
   bindClicks();
 
   document.getElementById('tb-bot-cloud').innerHTML=botTbl(botCloud);
@@ -1366,6 +1541,97 @@ function render(res){
   document.getElementById('btn-save-snapshot').disabled=false;
   renderActivityBase();
   if(snapshotData)renderActivityDiff();
+
+  // ===== 課金予備軍モニター（0〜3日目・未課金・今日ログイン・返信あり）=====
+  renderEarlyAdMonitor(getFilteredData());
+}
+
+function renderEarlyAdMonitor(data){
+  // 対象：0〜3日目・未課金・今日ログイン
+  const EARLY_DAYS=new Set(['0日目','1日目','2日目','3日目']);
+  const target=data.filter(u=>
+    !u.isPurchaser &&
+    u.isToday &&
+    EARLY_DAYS.has(u.dayLabel)
+  );
+  if(!target.length){
+    document.getElementById('tb-early-ad').innerHTML=
+      '<tr><td colspan="7" style="text-align:center;color:var(--dm);padding:14px">対象者なし（0〜3日目・未課金・今日ログインがいません）</td></tr>';
+    return;
+  }
+
+  // 広告コード別に集計
+  const adMap={};
+  target.forEach(u=>{
+    const code=u.adCode||'(なし)';
+    if(!adMap[code])adMap[code]={
+      loginIds:[],replyIds:[],
+      d0:[],d1:[],d2:[],d3:[]
+    };
+    const m=adMap[code];
+    m.loginIds.push(u.mid);
+    if(u.sendCnt>=1)m.replyIds.push(u.mid);
+    if(u.dayLabel==='0日目')m.d0.push(u.mid);
+    else if(u.dayLabel==='1日目')m.d1.push(u.mid);
+    else if(u.dayLabel==='登録2日目'||u.dayLabel==='登録2.5日目')m.d2.push(u.mid);
+    else if(u.dayLabel==='登録3日目')m.d3.push(u.mid);
+  });
+
+  // 在籍数（今日ログイン問わず同条件の全員）
+  const allTarget=data.filter(u=>!u.isPurchaser&&EARLY_DAYS.has(u.dayLabel));
+  const allAdTotal={};
+  allTarget.forEach(u=>{
+    const code=u.adCode||'(なし)';
+    allAdTotal[code]=(allAdTotal[code]||0)+1;
+  });
+
+  // 返信者数で降順ソート
+  const rows=Object.entries(adMap)
+    .sort((a,b)=>b[1].replyIds.length-a[1].replyIds.length)
+    .map(([code,m])=>{
+      const isPure=_renderPureAdCodes.size>0&&_renderPureAdCodes.has(code);
+      const total=allAdTotal[code]||0;
+      const loginN=m.loginIds.length;
+      const replyN=m.replyIds.length;
+      const loginRate=total>0?Math.round(loginN/total*100):0;
+      const replyRate=loginN>0?Math.round(replyN/loginN*100):0;
+      const replyColor=replyRate>=50?'var(--gn)':replyRate>=30?'var(--og)':'var(--ac)';
+      const badge=isPure
+        ?`<span style="margin-left:5px;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(240,170,64,.15);color:var(--og);border:1px solid rgba(240,170,64,.3)">純広</span>`
+        :`<span style="margin-left:5px;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,204,224,.1);color:var(--cy);border:1px solid rgba(34,204,224,.25)">CSV</span>`;
+      const breakdown=`<span style="color:var(--og)">${m.d0.length}</span>/<span style="color:var(--tx)">${m.d1.length}</span>/<span style="color:var(--tx)">${m.d2.length}</span>/<span style="color:var(--tx)">${m.d3.length}</span>`;
+      return`<tr>
+        <td style="text-align:left;padding-left:10px;font-family:'JetBrains Mono',monospace;font-size:11px">
+          ${esc(code)}${badge}
+        </td>
+        ${cTd([...m.loginIds,...allTarget.filter(u=>(u.adCode||'(なし)')===code&&!m.loginIds.includes(u.mid)).map(u=>u.mid)],`${code} 在籍（0〜3日目・未課金）`)}
+        ${cTd(m.loginIds,`${code} 今日ログイン（0〜3日目・未課金）`,'color:var(--gn)')}
+        <td class="${loginRate>=50?'rh':loginRate>=30?'rm':'rl'}">${loginRate}%</td>
+        ${cTd(m.replyIds,`${code} 返信あり（0〜3日目・未課金・今日）`,`color:${replyColor};font-weight:700`)}
+        <td style="color:${replyColor};font-weight:700">${replyRate}%</td>
+        <td style="font-size:11px">${breakdown}</td>
+      </tr>`;
+    });
+
+  // 合計行
+  const totalLogin=Object.values(adMap).reduce((s,m)=>s+m.loginIds.length,0);
+  const totalReply=Object.values(adMap).reduce((s,m)=>s+m.replyIds.length,0);
+  const totalAll=allTarget.length;
+  const allLoginIds=[...new Set(target.map(u=>u.mid))];
+  const allReplyIds=[...new Set(target.filter(u=>u.sendCnt>=1).map(u=>u.mid))];
+
+  document.getElementById('tb-early-ad').innerHTML=
+    rows.join('')+
+    `<tr class="tot-row">
+      <td style="font-family:'Noto Sans JP',sans-serif">合計</td>
+      ${cTd(allTarget.map(u=>u.mid),'0〜3日目・未課金 全在籍')}
+      ${cTd(allLoginIds,'0〜3日目・未課金・今日ログイン 全体','color:var(--gn);font-weight:700')}
+      <td class="${totalAll>0?totalLogin/totalAll>=0.5?'rh':totalLogin/totalAll>=0.3?'rm':'rl':''}">${totalAll>0?Math.round(totalLogin/totalAll*100):0}%</td>
+      ${cTd(allReplyIds,'0〜3日目・未課金・返信あり 全体','color:var(--ac);font-weight:700')}
+      <td style="color:var(--ac);font-weight:700">${totalLogin>0?Math.round(totalReply/totalLogin*100):0}%</td>
+      <td>-</td>
+    </tr>`;
+  bindClicks();
 }
 
 // ===== BOT ID COPY =====
@@ -1387,7 +1653,7 @@ function copyBotIds(type){
 // フィルタ状態
 let actFilter={purchase:'all', login:'all', reply:'all'};
 
-function getFilteredData(){
+function getActivityFilteredData(){
   return mergedData.filter(u=>{
     // 課金フィルター
     if(actFilter.purchase==='paid' && !u.isPurchaser) return false;
@@ -1414,7 +1680,7 @@ function updateFilterSummary(filtered, total){
 function renderActivityBase(){
   if(!mergedData.length)return;
   const thHi=parseInt(document.getElementById('pt-thresh-hi').value)||1000;
-  const data=getFilteredData();
+  const data=getActivityFilteredData();
   const totalUsers=data.length;
   const totalAll=mergedData.length;
   updateFilterSummary(totalUsers, totalAll);
@@ -1434,13 +1700,7 @@ function renderActivityBase(){
   const paidCount=data.filter(u=>u.isPurchaser).length;
   const unpaidCount=data.filter(u=>!u.isPurchaser).length;
 
-  // クリッカブルカード生成ヘルパー
-  function actCard(ids,label,color,value,sub,fontSize='26px'){
-    const k='ac_'+Math.random().toString(36).slice(2,8);
-    memberMap[k]=ids;
-    const hasIds=ids&&ids.length>0;
-    return`<div class="act-metric${hasIds?' clickable':''}" ${hasIds?`data-k="${k}" data-l="${label}"`:''}><div class="av" style="color:${color};font-size:${fontSize}">${value}</div><div class="al">${label}</div>${sub?`<div class="as">${sub}</div>`:''}</div>`;
-  }
+  // actCardはグローバル関数として定義済み
 
   const paidIds=data.filter(u=>u.isPurchaser).map(u=>u.mid);
   const unpaidIds=data.filter(u=>!u.isPurchaser).map(u=>u.mid);
@@ -1499,11 +1759,29 @@ function renderActivityBase(){
   }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(data.map(u=>u.mid),'フィルター対象全員')}<td>100%</td>${cTd(data.filter(u=>u.isPurchaser).map(u=>u.mid),'課金者合計','color:var(--pp)')}${cTd(data.filter(u=>!u.isPurchaser).map(u=>u.mid),'未課金者合計','color:var(--cy)')}</tr>`;
 
   bindClicks();
+  bindActFilters();
+  renderUserList();
 }
 
 function refreshActivity(){
   renderActivityBase();
   if(snapshotData)renderActivityDiff();
+}
+
+function bindActFilters(){
+  document.querySelectorAll('.btn-toggle button').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const group=this.closest('.btn-toggle');
+      group.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      const filterId=group.id;
+      const val=this.dataset.val;
+      if(filterId==='filter-purchase') actFilter.purchase=val;
+      else if(filterId==='filter-login') actFilter.login=val;
+      else if(filterId==='filter-reply') actFilter.reply=val;
+      refreshActivity();
+    });
+  });
 }
 
 function refreshActivity(){
@@ -1516,7 +1794,7 @@ function renderActivityDiff(){
   const ptPerMsg=parseInt(document.getElementById('pt-per-msg').value)||150;
   const snap=snapshotData.data;
   const snapTime=snapshotData.timestamp||'不明';
-  const data=getFilteredData(); // フィルター適用済みデータ
+  const data=getActivityFilteredData(); // フィルター適用済みデータ
 
   document.getElementById('act-diff-section').style.display='block';
   document.getElementById('act-no-snapshot').style.display='none';
@@ -1581,7 +1859,7 @@ function renderActivityDiff(){
   const inactKeys=Object.keys(inactiveByStatus).sort((a,b)=>inactiveByStatus[b].total.length-inactiveByStatus[a].total.length);
   document.getElementById('tb-diff-inactive').innerHTML=inactKeys.map(k=>{
     const d=inactiveByStatus[k];
-    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${k}</td>${cTd(d.total,k+' 活動なし','color:var(--rd)')}${cTd(d.login,k+' 活動なし・今日ログイン','color:var(--og)')}</tr>`;
+    return`<tr><td style="font-family:'Noto Sans JP',sans-serif;font-size:11px">${esc(k)}</td>${cTd(d.total,k+' 活動なし','color:var(--rd)')}${cTd(d.login,k+' 活動なし・今日ログイン','color:var(--og)')}</tr>`;
   }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(inactiveIds,'活動なし 全ユーザー','color:var(--rd);font-weight:700')}<td>-</td></tr>`;
 
   bindClicks();
@@ -1638,7 +1916,6 @@ actDrop.addEventListener('drop',e=>{
 });
 
 
-
 // ===== ドメイン集計 =====
 let domainStats={yahoo:[],hotmail:[],other:[]};
 
@@ -1686,6 +1963,7 @@ function copyDomains(type){
     setTimeout(()=>div.remove(),2000);
   });
 }
+
 
 // ===== 配信管理 =====
 // キャリア別PC判定（iCloud/ymobile/uqmobile以外のメールアドレス）
@@ -1884,6 +2162,8 @@ function renderDelivery(){
 
 function renderAdCode(sortCol,dir){
   if(!adcodeStore)return;
+  // 純広告コードセット（この関数内で一度だけ生成）
+  _renderPureAdCodes=new Set((localStorage.getItem('tenshin_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
   const keys=Object.keys(adcodeStore);
   const aT={total:[],login:[],s7p:[],pur:[],amount:0};
   keys.forEach(k=>{const d=adcodeStore[k];aT.total.push(...d.total);aT.login.push(...d.login);aT.s7p.push(...d.s7p);aT.pur.push(...d.pur);aT.amount+=d.amount;});
@@ -1907,7 +2187,11 @@ function renderAdCode(sortCol,dir){
   document.getElementById('tb-adcode').innerHTML=sorted.map(k=>{
     const d=adcodeStore[k];const t=d.total.length;
     const arpu=t>0?'¥'+Math.round(d.amount/t).toLocaleString():'-';
-    return`<tr><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;font-family:'Noto Sans JP',sans-serif"title="${k}">${k}</td>${cTd(d.total,'在籍：'+k)}${cTd(d.login,'ログイン：'+k)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>${cTd(d.s7p,'7通以上返信：'+k,'color:var(--gn)')}<td class="${rc(pctN(d.s7p.length,t))}">${pct(d.s7p.length,t)}</td>${cTd(d.pur,'課金者：'+k,'color:var(--pp)')}<td class="${rc(pctN(d.pur.length,t))}">${pct(d.pur.length,t)}</td><td style="color:${d.amount>0?'var(--og)':'var(--dm)'};font-weight:${d.amount>0?700:400}">${yen(d.amount)}</td><td style="color:var(--dm)">${arpu}</td></tr>`;
+    const isAdCode=_renderPureAdCodes.size>0&&_renderPureAdCodes.has(k);
+    const rowBg=isAdCode?'background:rgba(240,170,64,.04)':'';
+    const adBadge=isAdCode?`<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(240,170,64,.15);color:var(--og);margin-left:4px;vertical-align:middle">AD</span>`:
+      `<span style="display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,204,224,.1);color:var(--cy);margin-left:4px;vertical-align:middle">CSV</span>`;
+    return`<tr style="${rowBg}"><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;font-family:'Noto Sans JP',sans-serif"title="${k}">${k}${adBadge}</td>${cTd(d.total,'在籍：'+k)}${cTd(d.login,'ログイン：'+k)}<td class="${rc(pctN(d.login.length,t))}">${pct(d.login.length,t)}</td>${cTd(d.s7p,'7通以上返信：'+k,'color:var(--gn)')}<td class="${rc(pctN(d.s7p.length,t))}">${pct(d.s7p.length,t)}</td>${cTd(d.pur,'課金者：'+k,'color:var(--pp)')}<td class="${rc(pctN(d.pur.length,t))}">${pct(d.pur.length,t)}</td><td style="color:${d.amount>0?'var(--og)':'var(--dm)'};font-weight:${d.amount>0?700:400}">${yen(d.amount)}</td><td style="color:var(--dm)">${arpu}</td></tr>`;
   }).join('')+`<tr class="tot-row"><td style="font-family:'Noto Sans JP',sans-serif">合計</td>${cTd(aT.total,'全在籍')}${cTd(aT.login,'全ログイン')}<td>-</td>${cTd(aT.s7p,'7通以上返信合計','color:var(--gn)')}<td>-</td>${cTd(aT.pur,'全課金者','color:var(--pp)')}<td>-</td><td style="color:var(--og);font-weight:700">¥${Math.round(aT.amount).toLocaleString()}</td><td>-</td></tr>`;
   bindClicks();
 }
@@ -1915,7 +2199,19 @@ function renderAdCode(sortCol,dir){
 // ===== FILE HANDLING =====
 let csvRaw=null,xlsxRaw=null,mergedData=[];
 let _renderPureAdCodes=new Set();
+let _currentTargetDate=new Date();
 let _userMap={};
+function actCard(ids,label,color,value,sub,fontSize='26px'){
+  const k='ac_'+Math.random().toString(36).slice(2,8);
+  memberMap[k]=ids;
+  const hasIds=ids&&ids.length>0;
+  return`<div class="act-metric${hasIds?' clickable':''}" ${hasIds?`data-k="${k}" data-l="${label}"`:''}><div class="av" style="color:${color};font-size:${fontSize}">${value}</div><div class="al">${label}</div>${sub?`<div class="as">${sub}</div>`:''}</div>`;
+}
+function isAdUser(u){
+  if(!u)return false;
+  const obj=typeof u==='string'?_userMap[u]:u;
+  return _renderPureAdCodes.size>0&&obj&&_renderPureAdCodes.has(obj.adCode);
+}
 let snapshotData=null; // 前回スナップショット
 
 document.getElementById('input-csv').addEventListener('change',e=>{
@@ -1924,8 +2220,16 @@ document.getElementById('input-csv').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=ev=>{
     const u8=new Uint8Array(ev.target.result);
-    let text;try{text=new TextDecoder('cp932').decode(u8);if(text.includes('\uFFFD'))throw 0;}
-    catch(e){text=new TextDecoder('utf-8').decode(u8);}
+    let text;
+    if(u8[0]===0xEF&&u8[1]===0xBB&&u8[2]===0xBF){
+      // UTF-8 BOM あり
+      text=new TextDecoder('utf-8').decode(u8.slice(3));
+    } else {
+      // このCSVはShift-JIS形式。shift_jisを優先し、失敗時のみUTF-8にフォールバック
+      // ※ブラウザのWHATWG仕様では'cp932'は無効ラベル。'shift_jis'を使う
+      try{text=new TextDecoder('shift_jis').decode(u8);if(text.includes('\uFFFD'))throw 0;}
+      catch(e){text=new TextDecoder('utf-8').decode(u8);}
+    }
     csvRaw=parseCSV(text);
     document.getElementById('csv-status').textContent=`✓ ${csvRaw.length}行`;
     document.getElementById('box-csv').classList.add('loaded');checkReady();
@@ -1939,7 +2243,7 @@ document.getElementById('input-xlsx').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=ev=>{
     try{
-      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true,codepage:932});
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});
       xlsxRaw=parseXlsx(wb);
       document.getElementById('xlsx-status').textContent=`✓ ${Object.keys(xlsxRaw).length}人`;
       document.getElementById('box-xlsx').classList.add('loaded');checkReady();
@@ -1951,19 +2255,42 @@ function checkReady(){document.getElementById('start-btn').classList.toggle('sho
 
 function startAnalysis(){
   mergedData=mergeData(csvRaw,xlsxRaw);
+  // 最新ログイン日を自動検出して対象日にセット
   const allLastDays=mergedData.map(u=>u.lastDay).filter(d=>d&&d.length===10).sort();
   const autoDate=allLastDays.length>0?allLastDays[allLastDays.length-1]:todayStr();
-  document.getElementById('target-date').value=autoDate;
-  mergedData=mergeData(csvRaw,xlsxRaw);
+  if(autoDate!==todayStr()){
+    // 前日以前のデータなら自動で日付をセット
+    const [ay,am,ad]=autoDate.split('-').map(Number);
+    _currentTargetDate=new Date(Date.UTC(ay,am-1,ad));
+    document.getElementById('target-date').value=autoDate;
+  } else {
+    _currentTargetDate=new Date();
+    document.getElementById('target-date').value=todayStr();
+  }
   const today=autoDate;
   const matched=mergedData.filter(u=>xlsxRaw[u.mid]).length;
   const loginToday=mergedData.filter(u=>u.lastDay===today).length;
-  document.getElementById('debug-info').innerHTML=`<strong>CSV:</strong> ${csvRaw.length}行 | <strong>Excel:</strong> ${Object.keys(xlsxRaw).length}人 | <strong>ID一致:</strong> ${matched} | <strong>対象日:</strong> ${today} | <strong>今日ログイン:</strong> ${loginToday}`;
+  document.getElementById('debug-info').innerHTML=`<strong>CSV:</strong> ${csvRaw.length}行 | <strong>Excel:</strong> ${Object.keys(xlsxRaw).length}人 | <strong>ID一致:</strong> ${matched} | <strong>対象日:</strong> ${today}${today!==todayStr()?'<span style="color:var(--og)"> ← 自動検出（前日データ）</span>':''} | <strong>今日ログイン:</strong> ${loginToday}`;
   document.getElementById('load-time').textContent=new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'});
   document.getElementById('drop-zone').classList.add('hidden');
   document.getElementById('dashboard').classList.add('active');
-  render(analyze(mergedData));
-  ['btn-save-noon','btn-save-night'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+  // 表示切り替えフィルターを適用してanalyze
+  _currentSegFilter = 'all'; // 読み込み時は全体表示にリセット
+  const _banner=document.getElementById('filter-banner');if(_banner)_banner.style.display='none';
+  document.querySelectorAll('.seg-toggle-btn').forEach(b => {
+    if(b.dataset.seg === 'all') {
+      b.style.background='var(--ac)';b.style.color='#fff';b.style.borderColor='var(--ac)';
+    } else {
+      b.style.background='var(--s2)';b.style.color='var(--dm)';b.style.borderColor='var(--bd)';
+    }
+  });
+  const segLabel=document.getElementById('seg-filter-label');
+  if(segLabel)segLabel.textContent=`（${mergedData.length}人）`;
+  render(analyze(getFilteredData()));
+  ['btn-save-noon','btn-save-night'].forEach(id=>{
+    const b=document.getElementById(id);if(b)b.disabled=false;
+  });
+  initUListFilters(); // ユーザー一覧の送信数フィルターボタンを初期化
 }
 
 // ===== フィルタートグル =====
@@ -2003,36 +2330,429 @@ document.querySelectorAll('.tab').forEach(tab=>{
   });
 });
 
-// ===== 今日の記録を保存 =====
+// ===== 今日の記録を保存（推移トラッカー用） =====
 function saveDailyLog(timeSlot='night'){
   if(!mergedData||!mergedData.length){alert('先にCSVとExcelを読み込んでください');return;}
   const today=document.getElementById('target-date')?.value||todayStr();
-  const loginUsers=mergedData.filter(u=>u.lastDay===today);
-  const replyUsers=mergedData.filter(u=>u.lastDay===today&&u.sendCnt>0);
+  // 純広告コードをlocalStorageから取得
+  const pureAdCodes=new Set((localStorage.getItem('tenshin_pure_ad_codes')||'').split('\n').map(s=>s.trim()).filter(Boolean));
+
+  const loginUsers=mergedData.filter(u=>u.isToday);
+  const replyUsers=mergedData.filter(u=>u.isToday&&u.sendCnt>0);
+
+  // セグメント分け
+  const seg=u=>{
+    const isNew=u.dayLabel==='0日目';
+    const isPaid=u.isPurchaser;
+    const isAd=pureAdCodes.size>0&&pureAdCodes.has(u.adCode);
+    const src=isAd?'ad':'csv';
+    if(isNew)return{type:'new',src};
+    if(isPaid)return{type:'paid',src};
+    return{type:'unpaid',src};
+  };
+
+  const segs={
+    new_ad:[],new_csv:[],
+    paid_ad:[],paid_csv:[],
+    unpaid_ad:[],unpaid_csv:[]
+  };
+  loginUsers.forEach(u=>{
+    const s=seg(u);
+    const key=s.type+'_'+s.src;
+    if(segs[key])segs[key].push(u.mid);
+  });
+  const replySegs={new_ad:[],new_csv:[],paid_ad:[],paid_csv:[],unpaid_ad:[],unpaid_csv:[]};
+  replyUsers.forEach(u=>{
+    const s=seg(u);
+    const key=s.type+'_'+s.src;
+    if(replySegs[key])replySegs[key].push(u.mid);
+  });
+
+  // 広告コード別集計（ログイン・返信IDリスト）
+  const adCodeStats={};
+  loginUsers.forEach(u=>{
+    if(!adCodeStats[u.adCode])adCodeStats[u.adCode]={loginIds:[],replyIds:[]};
+    adCodeStats[u.adCode].loginIds.push(u.mid);
+  });
+  replyUsers.forEach(u=>{
+    if(!adCodeStats[u.adCode])adCodeStats[u.adCode]={loginIds:[],replyIds:[]};
+    adCodeStats[u.adCode].replyIds.push(u.mid);
+  });
+
+  // ステータス別集計（どの日目の人がログインしたか）
+  const statusStats={};
+  loginUsers.forEach(u=>{
+    const k=u.dayLabel||'(不明)';
+    if(!statusStats[k])statusStats[k]={loginIds:[],replyIds:[]};
+    statusStats[k].loginIds.push(u.mid);
+  });
+  replyUsers.forEach(u=>{
+    const k=u.dayLabel||'(不明)';
+    if(!statusStats[k])statusStats[k]={loginIds:[],replyIds:[]};
+    statusStats[k].replyIds.push(u.mid);
+  });
+
   const log={
-    date:today, timeSlot,
-    login:loginUsers.length, reply:replyUsers.length, total:mergedData.length,
-    loginIds:loginUsers.map(u=>u.mid), replyIds:replyUsers.map(u=>u.mid),
+    date:today,
+    // 合計
+    login:loginUsers.length,
+    reply:replyUsers.length,
+    total:mergedData.length,
+    totalPaid:mergedData.filter(u=>u.isPurchaser).length,
+    totalUnpaid:mergedData.filter(u=>!u.isPurchaser).length,
+    // セグメント別ログイン
+    login_new:segs.new_ad.length+segs.new_csv.length,
+    login_paid:segs.paid_ad.length+segs.paid_csv.length,
+    login_unpaid:segs.unpaid_ad.length+segs.unpaid_csv.length,
+    login_ad:segs.new_ad.length+segs.paid_ad.length+segs.unpaid_ad.length,
+    login_csv:segs.new_csv.length+segs.paid_csv.length+segs.unpaid_csv.length,
+    // セグメント別返信
+    reply_new:replySegs.new_ad.length+replySegs.new_csv.length,
+    reply_paid:replySegs.paid_ad.length+replySegs.paid_csv.length,
+    reply_unpaid:replySegs.unpaid_ad.length+replySegs.unpaid_csv.length,
+    // IDリスト（ユニーク計算用）
+    loginIds:loginUsers.map(u=>u.mid),
+    replyIds:replyUsers.map(u=>u.mid),
+    loginIds_new:segs.new_ad.concat(segs.new_csv),
+    loginIds_paid:segs.paid_ad.concat(segs.paid_csv),
+    loginIds_unpaid:segs.unpaid_ad.concat(segs.unpaid_csv),
+    loginIds_ad:segs.new_ad.concat(segs.paid_ad,segs.unpaid_ad),
+    loginIds_csv:segs.new_csv.concat(segs.paid_csv,segs.unpaid_csv),
+    replyIds_paid:replySegs.paid_ad.concat(replySegs.paid_csv),
+    replyIds_unpaid:replySegs.unpaid_ad.concat(replySegs.unpaid_csv),
+    replyIds_new:replySegs.new_ad.concat(replySegs.new_csv),
+    // 広告コード別・ステータス別（週次ユニーク計算用）
+    adCodeStats,
+    statusStats,
+    pureAdCodes:[...pureAdCodes],
+    timeSlot,  // 'noon'=12時 / 'night'=21時
     savedAt:new Date().toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})
   };
   const blob=new Blob([JSON.stringify(log,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
   const slotLabel=timeSlot==='noon'?'_1200':'_2100';
-  a.href=url; a.download=`log_${today}${slotLabel}.json`; a.click();
+  a.href=url;a.download=`log_${today}${slotLabel}.json`;a.click();
   URL.revokeObjectURL(url);
   const btnId=timeSlot==='noon'?'btn-save-noon':'btn-save-night';
   const btn=document.getElementById(btnId);
-  if(btn){const orig=btn.textContent;btn.textContent='✅ 保存完了';setTimeout(()=>{btn.textContent=orig;},2500);}
+  if(btn){
+    const orig=btn.textContent;
+    btn.textContent='✅ 保存完了';
+    setTimeout(()=>{btn.textContent=orig;},2500);
+  }
 }
+
+// ===== 純広告コード設定 =====
+function openAdCodeModal(){
+  const saved=localStorage.getItem('tenshin_pure_ad_codes')||'';
+  document.getElementById('adcode-input').value=saved;
+  document.getElementById('adcode-modal').style.display='flex';
+}
+function closeAdCodeModal(){document.getElementById('adcode-modal').style.display='none';}
+function saveAdCodes(){
+  const val=document.getElementById('adcode-input').value.trim();
+  localStorage.setItem('tenshin_pure_ad_codes',val);
+  const cnt=val.split('\n').filter(s=>s.trim()).length;
+  closeAdCodeModal();
+  // データ読込済みなら mergeData から再実行（dayLabelを純広告基準で再計算）
+  if(csvRaw&&xlsxRaw){
+    mergedData=mergeData(csvRaw,xlsxRaw); // dayLabel再計算
+    render(analyze(getFilteredData()));
+    ['btn-save-noon','btn-save-night'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+  }
+  const msg=cnt>0?`純広告コードを${cnt}件保存しました。再集計しました。`:'クリアしました。再集計しました。';
+  // alertの代わりにインライン通知（alertはブロッキングなので使わない）
+  const notif=document.createElement('div');
+  notif.textContent=msg;
+  notif.style.cssText='position:fixed;bottom:20px;right:20px;background:#1e2233;border:1px solid #2dd4a0;color:#2dd4a0;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;z-index:9999;transition:opacity .4s';
+  document.body.appendChild(notif);
+  setTimeout(()=>{notif.style.opacity='0';setTimeout(()=>notif.remove(),400);},2500);
+}
+document.getElementById('adcode-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAdCodeModal();});
+
+
+// ===== データ表示切り替え =====
+let _currentSegFilter = 'all';
+
+function setSegFilter(seg, btn) {
+  _currentSegFilter = seg;
+  // ボタンのスタイル切り替え
+  document.querySelectorAll('.seg-toggle-btn').forEach(b => {
+    if(b.dataset.seg === seg) {
+      b.style.background = seg==='ad' ? 'var(--og)' : seg==='csv' ? 'var(--cy)' : 'var(--ac)';
+      b.style.color = (seg==='csv'||seg==='ad') ? '#0c0e17' : '#fff';
+      b.style.borderColor = seg==='ad' ? 'var(--og)' : seg==='csv' ? 'var(--cy)' : 'var(--ac)';
+    } else {
+      b.style.background = 'var(--s2)';
+      b.style.color = 'var(--dm)';
+      b.style.borderColor = 'var(--bd)';
+    }
+  });
+
+  // フィルター適用してanalyze
+  if(!mergedData || !mergedData.length) return;
+  const filtered = getFilteredData();
+  const label = document.getElementById('seg-filter-label');
+  if(label) label.textContent = `（${filtered.length}人）`;
+
+  // フィルターバナー表示
+  const banner = document.getElementById('filter-banner');
+  if(banner){
+    if(seg === 'all'){
+      banner.style.display = 'none';
+    } else if(seg === 'ad'){
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(240,170,64,.15)';
+      banner.style.border = '1px solid rgba(240,170,64,.4)';
+      banner.style.color = 'var(--og)';
+      banner.textContent = `🟠 純広告フィルター適用中 — ${filtered.length}人のデータを表示（全体: ${mergedData.length}人）`;
+    } else {
+      banner.style.display = 'block';
+      banner.style.background = 'rgba(34,204,224,.1)';
+      banner.style.border = '1px solid rgba(34,204,224,.3)';
+      banner.style.color = 'var(--cy)';
+      banner.textContent = `🔵 CSV系フィルター適用中 — ${filtered.length}人のデータを表示（全体: ${mergedData.length}人）`;
+    }
+  }
+  render(analyze(filtered));
+  ['btn-save-noon','btn-save-night'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false;});
+}
+
+function getFilteredData() {
+  if(!mergedData) return [];
+  if(_currentSegFilter === 'all') return mergedData;
+  const pureAdCodes = new Set(
+    (localStorage.getItem('tenshin_pure_ad_codes') || '')
+      .split('\n').map(s => s.trim()).filter(Boolean)
+  );
+  if(_currentSegFilter === 'ad') {
+    return mergedData.filter(u => pureAdCodes.has(u.adCode));
+  }
+  // csv: 純広告以外
+  return mergedData.filter(u => !pureAdCodes.has(u.adCode));
+}
+
+
 function reAnalyze(){
   if(!mergedData||!mergedData.length)return;
-  const v=document.getElementById('target-date').value;if(!v)return;
-  mergedData=mergeData(csvRaw,xlsxRaw);render(analyze(mergedData));
+  const v=document.getElementById('target-date').value;
+  if(!v)return;
+  const[y,m,d]=v.split('-').map(Number);
+  _currentTargetDate=new Date(Date.UTC(y,m-1,d));
+  mergedData=mergeData(csvRaw,xlsxRaw);
+  render(analyze(getFilteredData()));
 }
 function setToday(){
-  document.getElementById('target-date').value=todayStr();
-  mergedData=mergeData(csvRaw,xlsxRaw);render(analyze(mergedData));
+  const v=todayStr();
+  document.getElementById('target-date').value=v;
+  const[y,m,d]=v.split('-').map(Number);
+  _currentTargetDate=new Date(Date.UTC(y,m-1,d));
+  mergedData=mergeData(csvRaw,xlsxRaw);
+  render(analyze(getFilteredData()));
 }
+
+// ===== ユーザー一覧 =====
+let _uFilter = 'all';
+let _uSendMin = 0; // 送信数フィルター
+let _userListData = [];
+// ヘッダーソート状態
+let _ulSortCol = 'pt_desc';  // デフォルト：保有PT降順
+let _ulSortDir = 'desc';     // 'asc' | 'desc'
+
+// ヘッダークリックで並替
+function ulSortBy(col) {
+  // 同じ列を再クリック → 昇順/降順トグル
+  const baseCol = col.replace(/_desc$|_asc$/, '');
+  const curBase = _ulSortCol.replace(/_desc$|_asc$/, '');
+  if (baseCol === curBase) {
+    _ulSortDir = _ulSortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    _ulSortCol = col;
+    _ulSortDir = 'desc';
+  }
+  // ドロップダウンも同期
+  const sel = document.getElementById('user-sort');
+  if (sel) {
+    const target = _ulSortDir === 'desc' ? col : col.replace('_desc','_asc').replace('_asc','_desc');
+    const opt = sel.querySelector(`option[value="${_ulSortCol}"]`);
+    if (!opt) {
+      // login系の変換
+      if (baseCol === 'login') sel.value = _ulSortDir === 'desc' ? 'login_desc' : 'login_asc';
+    } else { sel.value = opt.value; }
+  }
+  renderUserList();
+}
+
+function setUFilter(f, btn) {
+  _uFilter = f;
+  document.querySelectorAll('[data-ufilter]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderUserList();
+}
+
+function clearULoginFilter() {
+  const from = document.getElementById('ul-login-from');
+  const to   = document.getElementById('ul-login-to');
+  if(from) from.value = '';
+  if(to)   to.value   = '';
+  renderUserList();
+}
+
+function initUListFilters() {
+  // 送信数フィルターボタン
+  const grp = document.getElementById('ul-filter-send');
+  if(grp) {
+    grp.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        grp.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _uSendMin = parseInt(btn.dataset.val) || 0;
+        renderUserList();
+      });
+    });
+  }
+  // ヘッダークリックで並替
+  document.querySelectorAll('.ul-sort').forEach(th => {
+    th.addEventListener('click', () => ulSortBy(th.dataset.col));
+  });
+}
+
+function buildUserListData() {
+  const data = getActivityFilteredData();
+  const ptPerMsg = parseInt(document.getElementById('pt-per-msg').value) || 150;
+  const snap = snapshotData ? snapshotData.data : null;
+
+  _userListData = data.map(u => {
+    const prevUsePt = snap ? (snap[u.mid] || 0) : null;
+    const consumed = snap !== null ? Math.max(0, u.totalUsePt - prevUsePt) : null;
+    const replyEst = consumed !== null ? Math.round(consumed / ptPerMsg) : null;
+
+    let state;
+    if (!u.isToday) state = 'no_login';
+    else if (consumed !== null && consumed > 0) state = 'active';
+    else if (u.curPt <= 0) state = 'no_pt';
+    else state = 'pt_inactive';
+
+    return { ...u, consumed, replyEst, state };
+  });
+}
+
+function renderUserList() {
+  buildUserListData();
+
+  // ドロップダウンの値もソートに使う（ドロップダウン変更時）
+  const selVal = document.getElementById('user-sort')?.value || 'pt_desc';
+  // ヘッダークリックが優先。ただしドロップダウンが変わっていればそちらを使う
+  const sortKey = selVal;
+
+  const loginFrom = document.getElementById('ul-login-from')?.value || '';
+  const loginTo   = document.getElementById('ul-login-to')?.value   || '';
+
+  let filtered = _userListData.filter(u => {
+    if (_uFilter !== 'all' && u.state !== _uFilter) return false;
+    if (_uSendMin > 0 && (u.sendCnt || 0) < _uSendMin) return false;
+    if (loginFrom && u.lastDay && u.lastDay < loginFrom) return false;
+    if (loginTo   && u.lastDay && u.lastDay > loginTo)   return false;
+    if ((loginFrom || loginTo) && !u.lastDay) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    let va, vb;
+    switch(sortKey) {
+      case 'pt_desc':      return (b.curPt||0) - (a.curPt||0);
+      case 'consume_desc': return (b.consumed||0) - (a.consumed||0);
+      case 'send_desc':    return (b.sendCnt||0) - (a.sendCnt||0);
+      case 'reply_desc':   return (b.replyEst||0) - (a.replyEst||0);
+      case 'login_desc':   return (b.lastDay||'').localeCompare(a.lastDay||'');
+      case 'login_asc':    return (a.lastDay||'').localeCompare(b.lastDay||'');
+      case 'status':       return (a.dayLabel||'').localeCompare(b.dayLabel||'');
+      default: return 0;
+    }
+  });
+
+  // ヘッダーのソートアイコン更新
+  document.querySelectorAll('.ul-sort-icon').forEach(icon => {
+    const col = icon.dataset.col;
+    const baseCol = col.replace(/_desc$|_asc$/,'');
+    const curBase = sortKey.replace(/_desc$|_asc$/,'');
+    if (baseCol === curBase || col === sortKey) {
+      icon.textContent = sortKey.endsWith('_asc') ? ' ▲' : ' ▼';
+      icon.style.color = 'var(--ac)';
+    } else {
+      icon.textContent = '';
+    }
+  });
+  // ヘッダー自体の色
+  document.querySelectorAll('.ul-sort').forEach(th => {
+    const col = th.dataset.col;
+    const baseCol = col.replace(/_desc$|_asc$/,'');
+    const curBase = sortKey.replace(/_desc$|_asc$/,'');
+    th.style.color = (baseCol === curBase || col === sortKey) ? 'var(--ac)' : '';
+  });
+
+  const stateLabel = { active: '✅ 活動あり', pt_inactive: '⚠️ PTあり未活動', no_pt: '🔴 PT枯渇', no_login: '⬜ 未ログイン' };
+  const stateColor = { active: 'var(--gn)', pt_inactive: 'var(--og)', no_pt: 'var(--rd)', no_login: 'var(--dm)' };
+
+  const activeFilters = [];
+  if (_uFilter !== 'all') activeFilters.push(stateLabel[_uFilter] || _uFilter);
+  if (_uSendMin > 0) activeFilters.push(`送信${_uSendMin}通以上`);
+  if (loginFrom || loginTo) activeFilters.push(`ログイン: ${loginFrom||'?'} 〜 ${loginTo||'?'}`);
+  const filterStr = activeFilters.length ? ` ｜ フィルター: ${activeFilters.join(' + ')}` : '';
+
+  document.getElementById('user-list-info').textContent =
+    `表示: ${filtered.length}人 / 全${_userListData.length}人${filterStr}`;
+
+  const rows = filtered.map(u => {
+    const consumeCell = u.consumed !== null
+      ? `<span style="color:${u.consumed > 0 ? 'var(--cy)' : 'var(--dm)'}">
+          ${u.consumed > 0 ? '+' : ''}${u.consumed.toLocaleString()}pt
+         </span>`
+      : '<span style="color:var(--dm)">-</span>';
+    const replyCell = u.replyEst !== null && u.replyEst > 0
+      ? `<span style="color:var(--gn)">${u.replyEst}通</span>` : '-';
+    const sendColor = (u.sendCnt||0) >= 7 ? 'var(--og)' : (u.sendCnt||0) >= 1 ? 'var(--tx)' : 'var(--dm)';
+    const loginColor = u.isToday ? 'var(--gn)' : u.lastDay ? 'var(--dm)' : 'var(--rd)';
+    const loginStr = u.lastDay || '未記録';
+
+    return `<tr>
+      <td style="text-align:left;padding-left:10px;min-width:130px">
+        <div style="font-weight:600;font-size:12px">${esc(u.name) || '-'}</div>
+        <div style="font-size:10px;color:var(--dm);font-family:monospace">${u.mid}</div>
+      </td>
+      <td style="text-align:left;font-size:11px">${u.dayLabel ? esc(u.dayLabel) : '-'}</td>
+      <td style="font-family:monospace;color:${(u.curPt||0) > 0 ? 'var(--pp)' : 'var(--dm)'}">
+        ${(u.curPt||0).toLocaleString()}pt
+      </td>
+      <td>${consumeCell}</td>
+      <td>${replyCell}</td>
+      <td style="font-family:monospace;color:${sendColor}">${(u.sendCnt||0).toLocaleString()}</td>
+      <td style="font-family:monospace;font-size:11px;color:${loginColor}">${loginStr}</td>
+      <td style="color:${stateColor[u.state]};font-size:11px">${stateLabel[u.state]}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('user-list-body').innerHTML = rows || '<tr><td colspan="8" style="text-align:center;color:var(--dm);padding:20px">該当なし</td></tr>';
+
+  window._copyIds = filtered.map(u => u.mid);
+}
+
+function copyUserIds() {
+  if (!window._copyIds || !window._copyIds.length) { alert('表示中のユーザーがいません'); return; }
+  const text = window._copyIds.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('btn-copy-ids');
+    btn.textContent = `✅ ${window._copyIds.length}件コピー完了`;
+    setTimeout(() => { btn.textContent = '📋 表示中をコピー'; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert(window._copyIds.length + '件のIDをコピーしました');
+  });
+}
+
 </script>
 </body>
 </html>
