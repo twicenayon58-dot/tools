@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会員ID抽出ツール v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+:root {
+  --bg: #0d0f14;
+  --surface: #151820;
+  --surface2: #1c2030;
+  --border: #252a38;
+  --border2: #2e3548;
+  --accent: #4f9cf9;
+  --accent2: #38d9a9;
+  --danger: #ff6b6b;
+  --text: #e8ecf4;
+  --text2: #8892a4;
+  --text3: #545d6e;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Noto Sans JP', sans-serif;
+  --c-docomo: #e60012;
+  --c-au: #ea6b00;
+  --c-softbank: #009ac7;
+  --c-gmail: #ea4335;
+  --c-yahoo: #6a0dad;
+  --c-hotmail: #0078d4;
+  --c-icloud: #aaaacc;
+  --c-sms: #38d9a9;
+  --c-other: #666;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* HEADER */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.header-icon {
+  width: 28px; height: 28px;
+  background: var(--accent);
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.header h1 { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+.header-ver {
+  font-family: var(--mono); font-size: 10px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 3px; padding: 1px 6px; color: var(--text3);
+}
+
+/* TOP CONTROLS */
+.top-controls {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex; align-items: center; gap: 14px; flex-shrink: 0; flex-wrap: wrap;
+}
+.upload-compact { position: relative; display: flex; align-items: center; gap: 8px; }
+.upload-compact input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.btn-upload {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--text); font-family: var(--sans); font-size: 11px; font-weight: 700;
+  padding: 5px 12px; cursor: pointer; white-space: nowrap; transition: border-color .15s;
+}
+.btn-upload:hover { border-color: var(--accent); }
+.upload-name {
+  font-family: var(--mono); font-size: 10px; color: var(--accent2);
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.divider { width: 1px; height: 24px; background: var(--border2); flex-shrink: 0; }
+.default-group { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.default-group label { font-size: 11px; color: var(--text2); }
+.num-input {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 4px 6px; width: 64px; outline: none; text-align: center;
+}
+.num-input:focus { border-color: var(--accent); }
+.btn-sm {
+  background: var(--accent); color: #fff; border: none; border-radius: 4px;
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  padding: 5px 10px; cursor: pointer; white-space: nowrap; transition: opacity .15s;
+}
+.btn-sm:hover { opacity: .85; }
+.btn-extract {
+  background: linear-gradient(135deg, #4f9cf9, #38d9a9);
+  color: #0d0f14; border: none; border-radius: 5px;
+  font-family: var(--sans); font-size: 12px; font-weight: 700;
+  padding: 6px 18px; cursor: pointer; margin-left: auto;
+  transition: opacity .15s, transform .1s; letter-spacing: .03em; white-space: nowrap;
+}
+.btn-extract:hover { opacity: .88; transform: translateY(-1px); }
+.btn-extract:active { transform: translateY(0); }
+.btn-extract:disabled { opacity: .3; cursor: not-allowed; transform: none; }
+.stat-chip {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; padding: 3px 10px; color: var(--text2); white-space: nowrap;
+}
+.stat-chip span { color: var(--accent2); font-weight: 700; }
+
+/* CARRIER FILTER BAR */
+.carrier-bar {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 8px 20px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; flex-wrap: wrap;
+}
+.carrier-bar-label { font-family: var(--mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-right: 4px; white-space: nowrap; }
+.carrier-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 10px 3px 8px; border-radius: 99px;
+  border: 1.5px solid var(--border2); background: var(--surface2);
+  cursor: pointer; font-size: 11px; font-weight: 700; color: var(--text3);
+  transition: all .15s; user-select: none; white-space: nowrap;
+}
+.carrier-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background .15s; }
+.carrier-chip.active { color: var(--text); }
+.carrier-chip[data-carrier=docomo].active  { background:rgba(230,0,18,.18);  border-color:var(--c-docomo);   color:var(--c-docomo); }
+.carrier-chip[data-carrier=docomo].active .dot   { background:var(--c-docomo); }
+.carrier-chip[data-carrier=au].active      { background:rgba(234,107,0,.18); border-color:var(--c-au);       color:var(--c-au); }
+.carrier-chip[data-carrier=au].active .dot       { background:var(--c-au); }
+.carrier-chip[data-carrier=softbank].active{ background:rgba(0,154,199,.18); border-color:var(--c-softbank); color:var(--c-softbank); }
+.carrier-chip[data-carrier=softbank].active .dot { background:var(--c-softbank); }
+.carrier-chip[data-carrier=gmail].active   { background:rgba(234,67,53,.18); border-color:var(--c-gmail);    color:var(--c-gmail); }
+.carrier-chip[data-carrier=gmail].active .dot    { background:var(--c-gmail); }
+.carrier-chip[data-carrier=yahoo].active   { background:rgba(106,13,173,.18);border-color:var(--c-yahoo);    color:var(--c-yahoo); }
+.carrier-chip[data-carrier=yahoo].active .dot    { background:var(--c-yahoo); }
+.carrier-chip[data-carrier=hotmail].active { background:rgba(0,120,212,.18); border-color:var(--c-hotmail);  color:var(--c-hotmail); }
+.carrier-chip[data-carrier=hotmail].active .dot  { background:var(--c-hotmail); }
+.carrier-chip[data-carrier=icloud].active  { background:rgba(170,170,204,.18);border-color:var(--c-icloud);  color:var(--c-icloud); }
+.carrier-chip[data-carrier=icloud].active .dot   { background:var(--c-icloud); }
+.carrier-chip[data-carrier=sms].active     { background:rgba(56,217,169,.18); border-color:var(--c-sms);     color:var(--c-sms); }
+.carrier-chip[data-carrier=sms].active .dot      { background:var(--c-sms); }
+.carrier-chip[data-carrier=other].active   { background:rgba(100,100,100,.18);border-color:var(--c-other);   color:#999; }
+.carrier-chip[data-carrier=other].active .dot    { background:var(--c-other); }
+.btn-carrier-all {
+  font-family: var(--mono); font-size: 10px; color: var(--text3);
+  background: none; border: 1px solid var(--border2); border-radius: 4px;
+  padding: 3px 8px; cursor: pointer; margin-left: 4px; transition: color .15s, border-color .15s;
+}
+.btn-carrier-all:hover { color: var(--text); border-color: var(--text2); }
+
+/* MAIN */
+.main-area { display: flex; flex: 1; overflow: hidden; }
+
+/* TABLE PANEL */
+.table-panel { width: 420px; min-width: 380px; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.table-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; }
+.ad-table { width: 100%; border-collapse: collapse; }
+.ad-table th {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .07em;
+  padding: 8px 8px 6px; border-bottom: 1px solid var(--border); text-align: left;
+  position: sticky; top: 0; background: var(--bg); z-index: 2;
+}
+.ad-table th.r { text-align: right; }
+.ad-table th.c { text-align: center; cursor: pointer; user-select: none; }
+.ad-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.ad-table tr:hover td { background: rgba(255,255,255,.015); }
+
+.code-name { font-family: var(--mono); font-size: 11px; color: var(--text); word-break: break-all; line-height: 1.4; }
+.carrier-mini { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+.cmini { font-family: var(--mono); font-size: 9px; padding: 1px 5px; border-radius: 3px; font-weight: 700; }
+.cmini-docomo   { background:rgba(230,0,18,.12);   color:var(--c-docomo); }
+.cmini-au       { background:rgba(234,107,0,.12);  color:var(--c-au); }
+.cmini-softbank { background:rgba(0,154,199,.12);  color:var(--c-softbank); }
+.cmini-gmail    { background:rgba(234,67,53,.12);  color:var(--c-gmail); }
+.cmini-yahoo    { background:rgba(106,13,173,.12); color:var(--c-yahoo); }
+.cmini-hotmail  { background:rgba(0,120,212,.12);  color:var(--c-hotmail); }
+.cmini-icloud   { background:rgba(170,170,204,.12);color:var(--c-icloud); }
+.cmini-sms      { background:rgba(56,217,169,.12); color:var(--c-sms); }
+.cmini-other    { background:rgba(100,100,100,.12);color:#888; }
+
+.stock-cell { text-align:right; font-family:var(--mono); font-size:12px; color:var(--text2); white-space:nowrap; }
+.stock-zero { color:var(--text3); }
+.count-cell { text-align:right; }
+.count-input {
+  background:var(--surface2); border:1px solid var(--border2); border-radius:4px;
+  color:var(--text); font-family:var(--mono); font-size:12px; font-weight:600;
+  padding:3px 5px; width:58px; outline:none; text-align:center;
+}
+.count-input:focus { border-color:var(--accent); }
+.count-input.over { border-color:var(--danger)!important; color:var(--danger)!important; }
+.count-input:disabled { opacity:.35; cursor:not-allowed; }
+.check-cell { text-align:center; }
+.check-cell input[type=checkbox] { width:14px; height:14px; accent-color:var(--accent); cursor:pointer; }
+.tbl-empty { padding:40px 20px; text-align:center; color:var(--text3); }
+.tbl-empty .icon { font-size:36px; margin-bottom:10px; opacity:.4; }
+.tbl-empty p { font-size:12px; }
+
+/* RESULT PANEL */
+.result-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.result-body { flex:1; display:flex; flex-direction:column; padding:16px 20px; gap:10px; overflow:hidden; }
+.result-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text3); gap:10px; }
+.result-empty .icon { font-size:36px; opacity:.35; }
+.result-empty p { font-size:12px; }
+.result-content { display:none; flex-direction:column; gap:10px; flex:1; overflow:hidden; }
+.result-content.show { display:flex; }
+.breakdown {
+  background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+  padding:10px 14px; font-family:var(--mono); font-size:11px; color:var(--text2);
+  line-height:2; max-height:150px; overflow-y:auto; flex-shrink:0;
+}
+.bk-code { color:var(--text); }
+.bk-zero { color:var(--text3); }
+.bk-carrier { font-size:10px; margin-left:6px; }
+.result-box { flex:1; display:flex; flex-direction:column; gap:6px; overflow:hidden; min-height:0; }
+.result-box-label { font-family:var(--mono); font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; flex-shrink:0; }
+.id-textarea {
+  flex:1; background:var(--surface2); border:1px solid var(--border2); border-radius:6px;
+  color:var(--accent2); font-family:var(--mono); font-size:12px; line-height:1.8;
+  padding:10px 12px; resize:none; outline:none; overflow-y:auto;
+}
+.id-textarea:focus { border-color:var(--accent); }
+.copy-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex-shrink:0; }
+.btn-copy {
+  background:var(--surface2); border:1px solid var(--border2); border-radius:4px;
+  color:var(--text); font-family:var(--sans); font-size:11px; font-weight:700;
+  padding:5px 12px; cursor:pointer; transition:all .15s; display:flex; align-items:center; gap:5px;
+}
+.btn-copy:hover { border-color:var(--accent); color:var(--accent); }
+.btn-copy.copied { border-color:var(--accent2); color:var(--accent2); }
+.copy-hint { font-size:11px; color:var(--text3); }
+
+
+/* CARRIER SUMMARY */
+.carrier-summary {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 14px 20px 0;
+}
+.carrier-summary.show { display: flex; }
+.cs-header { display:flex; align-items:center; gap:8px; }
+.cs-title { font-family:var(--mono); font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; }
+.cs-date  { font-family:var(--mono); font-size:10px; color:var(--text3); }
+.btn-cs-copy {
+  margin-left:auto; background:none; border:1px solid var(--border2); border-radius:4px;
+  color:var(--text3); font-family:var(--mono); font-size:10px; padding:2px 8px;
+  cursor:pointer; transition:all .15s;
+}
+.btn-cs-copy:hover { border-color:var(--accent); color:var(--accent); }
+.btn-cs-copy.copied { border-color:var(--accent2); color:var(--accent2); }
+.cs-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.cs-card {
+  background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+  padding:8px 10px; display:flex; flex-direction:column; gap:2px; position:relative; overflow:hidden;
+}
+.cs-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:var(--c-color, #555); }
+.cs-card-label { font-size:10px; font-weight:700; }
+.cs-card-count { font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text); line-height:1; }
+.cs-card-count.zero { color:var(--text3); }
+.cs-card-pct { font-family:var(--mono); font-size:10px; color:var(--text3); }
+.cs-total-row {
+  background:var(--surface2); border:1px solid var(--border2); border-radius:6px;
+  padding:7px 14px; display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--mono); font-size:11px; color:var(--text2);
+}
+.cs-total-row strong { color:var(--accent2); font-size:14px; }
+.divider-h { height:1px; background:var(--border); margin:0 20px; flex-shrink:0; }
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">📤</div>
+  <h1>会員ID 抽出ツール</h1>
+  <div class="header-ver">v2.0 キャリア対応</div>
+</div>
+
+<div class="top-controls">
+  <div class="upload-compact">
+    <input type="file" id="csvInput" accept=".csv" />
+    <button class="btn-upload">📂 CSVを読み込む</button>
+    <div class="upload-name" id="uploadName">ファイル未選択</div>
+  </div>
+  <div class="divider"></div>
+  <div class="default-group">
+    <label>デフォルト件数</label>
+    <input type="number" class="num-input" id="defaultCount" value="50" min="1" />
+    <button class="btn-sm" id="btnApplyDefault">全コードに適用</button>
+  </div>
+  <div class="divider"></div>
+  <div class="stat-chip">コード: <span id="statCodes">0</span></div>
+  <div class="stat-chip">合計: <span id="statTotal">0</span> 件</div>
+  <button class="btn-extract" id="btnExtract" disabled>▶ IDを抽出する</button>
+</div>
+
+<div class="carrier-bar">
+  <div class="carrier-bar-label">キャリア絞り込み</div>
+  <div class="carrier-chip active" data-carrier="docomo"><span class="dot"></span>ドコモ</div>
+  <div class="carrier-chip active" data-carrier="au"><span class="dot"></span>AU</div>
+  <div class="carrier-chip active" data-carrier="softbank"><span class="dot"></span>ソフトバンク</div>
+  <div class="carrier-chip active" data-carrier="gmail"><span class="dot"></span>Gmail</div>
+  <div class="carrier-chip active" data-carrier="yahoo"><span class="dot"></span>ヤフー</div>
+  <div class="carrier-chip active" data-carrier="hotmail"><span class="dot"></span>ホットメール</div>
+  <div class="carrier-chip active" data-carrier="icloud"><span class="dot"></span>iCloud</div>
+  <div class="carrier-chip active" data-carrier="sms"><span class="dot"></span>SMS</div>
+  <div class="carrier-chip active" data-carrier="other"><span class="dot"></span>その他</div>
+  <button class="btn-carrier-all" id="btnCarrierAll">全解除</button>
+</div>
+
+<div class="main-area">
+  <div class="table-panel">
+    <div class="table-scroll">
+      <div class="tbl-empty" id="tblEmpty">
+        <div class="icon">📋</div>
+        <p>CSVを読み込むと広告コード一覧が表示されます</p>
+      </div>
+      <table class="ad-table" id="adTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>広告コード</th>
+            <th class="r">在庫</th>
+            <th class="r">抽出数</th>
+            <th class="c" id="thCheckAll" title="クリックで全選択/全解除"><span id="checkAllIcon">☑</span></th>
+          </tr>
+        </thead>
+        <tbody id="adTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result-panel">
+    <div class="carrier-summary" id="carrierSummary">
+      <div class="cs-header">
+        <span class="cs-title">📊 キャリア別総数</span>
+        <span class="cs-date" id="csDate"></span>
+        <button class="btn-cs-copy" id="btnCsSummary">📋 記録用コピー</button>
+      </div>
+      <div class="cs-grid" id="csGrid"></div>
+      <div class="cs-total-row">
+        <span>CSV合計</span>
+        <strong id="csGrandTotal">0</strong> 件
+      </div>
+    </div>
+    <div class="divider-h" id="csDivider" style="display:none;"></div>
+    <div class="result-body">
+      <div class="result-empty" id="resultEmpty">
+        <div class="icon">🎯</div>
+        <p>CSVを読み込み、件数を設定して「IDを抽出する」を押してください</p>
+      </div>
+      <div class="result-content" id="resultContent">
+        <div class="breakdown" id="breakdown"></div>
+        <div class="result-box">
+          <div class="result-box-label">抽出された会員ID（改行区切り）</div>
+          <textarea class="id-textarea" id="idOutput" readonly></textarea>
+        </div>
+        <div class="copy-row">
+          <button class="btn-copy" id="btnCopyNewline">📋 改行区切りでコピー</button>
+          <button class="btn-copy" id="btnCopyComma">📋 カンマ区切りでコピー</button>
+          <span class="copy-hint" id="copyMsg"></span>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CARRIERS = [
+  { id:'docomo',   label:'ドコモ',      domains:['docomo.ne.jp','docomo.com'] },
+  { id:'au',       label:'AU',           domains:['au.com','ezweb.ne.jp','au.kddi.com'] },
+  { id:'softbank', label:'ソフトバンク', domains:['softbank.ne.jp','i.softbank.jp','vodafone.ne.jp','disney.ne.jp'] },
+  { id:'gmail',    label:'Gmail',         domains:['gmail.com'] },
+  { id:'yahoo',    label:'ヤフー',       domains:['yahoo.co.jp','ybb.ne.jp','yahoo.ne.jp'] },
+  { id:'hotmail',  label:'ホットメール', domains:['hotmail.com','hotmail.co.jp','outlook.com','outlook.jp','live.com','live.jp','msn.com'] },
+  { id:'icloud',   label:'iCloud',        domains:['icloud.com','me.com','mac.com'] },
+  { id:'sms',      label:'SMS',           domains:['sms.send'] },
+  { id:'other',    label:'その他',        domains:[] },
+];
+
+const domainMap = {};
+CARRIERS.forEach(c => c.domains.forEach(d => { domainMap[d] = c.id; }));
+
+function detectCarrier(email) {
+  const domain = (email.split('@')[1] || '').toLowerCase().trim();
+  return domainMap[domain] || 'other';
+}
+
+// adData[code] = [ { id, carrier }, ... ]
+let adData = {};
+let activeCarriers = new Set(CARRIERS.map(c => c.id));
+
+// UPLOAD
+document.getElementById('csvInput').addEventListener('change', function() {
+  if (this.files[0]) processFile(this.files[0]);
+});
+
+function processFile(file) {
+  document.getElementById('uploadName').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let text;
+    try {
+      text = new TextDecoder('shift-jis').decode(new Uint8Array(e.target.result));
+      if ((text.match(/\uFFFD/g)||[]).length > 20)
+        text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+    } catch {
+      text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+    }
+    parseCSV(text);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return;
+  const header    = parseCSVLine(lines[0]);
+  const adCodeIdx  = header.findIndex(h => h.includes('広告コード'));
+  const memberIdIdx = header.findIndex(h => h.includes('会員ID'));
+  const emailIdx    = header.findIndex(h => h.includes('メール'));
+  if (adCodeIdx === -1 || memberIdIdx === -1) { alert('広告コード列または会員ID列が見つかりません'); return; }
+  adData = {};
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseCSVLine(lines[i]);
+    if (row.length <= Math.max(adCodeIdx, memberIdIdx)) continue;
+    const code  = row[adCodeIdx].trim();
+    const id    = row[memberIdIdx].trim();
+    const email = emailIdx >= 0 ? (row[emailIdx]||'').trim() : '';
+    if (!code || !id) continue;
+    if (!adData[code]) adData[code] = [];
+    adData[code].push({ id, carrier: detectCarrier(email) });
+  }
+  renderTable();
+}
+
+function parseCSVLine(line) {
+  const res=[]; let cur=''; let inQ=false;
+  for (let i=0;i<line.length;i++) {
+    const c=line[i];
+    if(c==='"'){inQ=!inQ;}
+    else if(c===','&&!inQ){res.push(cur);cur='';}
+    else{cur+=c;}
+  }
+  res.push(cur); return res;
+}
+
+// CARRIER FILTER
+document.querySelectorAll('.carrier-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const c = chip.dataset.carrier;
+    if (activeCarriers.has(c)) { activeCarriers.delete(c); chip.classList.remove('active'); }
+    else { activeCarriers.add(c); chip.classList.add('active'); }
+    syncCarrierAllBtn();
+    refreshTableCounts();
+    updateStats();
+  });
+});
+
+document.getElementById('btnCarrierAll').addEventListener('click', () => {
+  const allActive = activeCarriers.size === CARRIERS.length;
+  activeCarriers = allActive ? new Set() : new Set(CARRIERS.map(c => c.id));
+  document.querySelectorAll('.carrier-chip').forEach(chip => {
+    chip.classList.toggle('active', activeCarriers.has(chip.dataset.carrier));
+  });
+  syncCarrierAllBtn();
+  refreshTableCounts();
+  updateStats();
+});
+
+function syncCarrierAllBtn() {
+  document.getElementById('btnCarrierAll').textContent =
+    activeCarriers.size === CARRIERS.length ? '全解除' : '全選択';
+}
+
+function filteredIds(code) {
+  return (adData[code]||[]).filter(e => activeCarriers.has(e.carrier));
+}
+
+// RENDER TABLE
+function renderTable() {
+  const tbody = document.getElementById('adTableBody');
+  tbody.innerHTML = '';
+  const codes = Object.keys(adData).sort();
+  const def = parseInt(document.getElementById('defaultCount').value)||50;
+
+  codes.forEach(code => {
+    const carrierCounts = {};
+    (adData[code]||[]).forEach(e => { carrierCounts[e.carrier] = (carrierCounts[e.carrier]||0)+1; });
+    const filtered = filteredIds(code);
+    const stock = filtered.length;
+    const val = Math.min(def, stock);
+
+    const miniHtml = CARRIERS
+      .filter(c => carrierCounts[c.id] > 0)
+      .map(c => `<span class="cmini cmini-${c.id}">${c.label} ${carrierCounts[c.id]}</span>`)
+      .join('');
+
+    const tr = document.createElement('tr');
+    tr.dataset.code = code;
+    tr.innerHTML = `
+      <td>
+        <div class="code-name">${code}</div>
+        <div class="carrier-mini">${miniHtml}</div>
+      </td>
+      <td class="stock-cell ${stock===0?'stock-zero':''}" data-stock="${code}">${stock.toLocaleString()}</td>
+      <td class="count-cell">
+        <input type="number" class="count-input" value="${val}" min="0" max="${stock}"
+          data-code="${code}" data-max="${stock}" ${stock===0?'disabled':''} />
+      </td>
+      <td class="check-cell">
+        <input type="checkbox" ${stock>0?'checked':''} data-code-check="${code}" ${stock===0?'disabled':''} />
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('.count-input').forEach(inp => {
+    inp.addEventListener('input', () => { validateInput(inp); updateStats(); });
+  });
+  tbody.querySelectorAll('[data-code-check]').forEach(chk => {
+    chk.addEventListener('change', () => { updateStats(); syncCheckAllIcon(); });
+  });
+
+
+// CARRIER SUMMARY
+const CARRIER_COLORS = {
+  docomo:'#e60012', au:'#ea6b00', softbank:'#009ac7',
+  gmail:'#ea4335', yahoo:'#6a0dad', hotmail:'#0078d4',
+  icloud:'#aaaacc', sms:'#38d9a9', other:'#666'
+};
+
+function renderCarrierSummary() {
+  const totals = {};
+  CARRIERS.forEach(c => { totals[c.id] = 0; });
+  Object.values(adData).forEach(entries => {
+    entries.forEach(e => { totals[e.carrier] = (totals[e.carrier]||0) + 1; });
+  });
+  const grand = Object.values(totals).reduce((a,b)=>a+b,0);
+
+  // date
+  const now = new Date();
+  document.getElementById('csDate').textContent =
+    `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
+
+  // grid
+  const grid = document.getElementById('csGrid');
+  grid.innerHTML = '';
+  CARRIERS.forEach(c => {
+    const n = totals[c.id]||0;
+    const pct = grand>0 ? ((n/grand)*100).toFixed(1) : '0.0';
+    const color = CARRIER_COLORS[c.id];
+    const card = document.createElement('div');
+    card.className = 'cs-card';
+    card.style.setProperty('--c-color', color);
+    card.innerHTML = `
+      <div class="cs-card-label" style="color:${color}">${c.label}</div>
+      <div class="cs-card-count ${n===0?'zero':''}">${n.toLocaleString()}</div>
+      <div class="cs-card-pct">${pct}%</div>`;
+    grid.appendChild(card);
+  });
+
+  document.getElementById('csGrandTotal').textContent = grand.toLocaleString();
+  document.getElementById('carrierSummary').classList.add('show');
+  document.getElementById('csDivider').style.display = '';
+}
+
+// 記録用コピー
+document.getElementById('btnCsSummary').addEventListener('click', function() {
+  const totals = {};
+  CARRIERS.forEach(c => { totals[c.id] = 0; });
+  Object.values(adData).forEach(entries => {
+    entries.forEach(e => { totals[e.carrier] = (totals[e.carrier]||0) + 1; });
+  });
+  const grand = Object.values(totals).reduce((a,b)=>a+b,0);
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
+  let text = `【キャリア別総数】${dateStr}\n`;
+  CARRIERS.forEach(c => { text += `${c.label}: ${(totals[c.id]||0).toLocaleString()}件\n`; });
+  text += `合計: ${grand.toLocaleString()}件`;
+  navigator.clipboard.writeText(text).then(() => {
+    this.textContent = '✓ コピーしました';
+    this.classList.add('copied');
+    setTimeout(()=>{ this.textContent = '📋 記録用コピー'; this.classList.remove('copied'); }, 2000);
+  });
+});
+  document.getElementById('tblEmpty').style.display = 'none';
+  document.getElementById('adTable').style.display = 'table';
+  document.getElementById('btnExtract').disabled = false;
+  document.getElementById('checkAllIcon').textContent = '☑';
+  renderCarrierSummary();
+  updateStats();
+}
+
+function validateInput(inp) {
+  const max = parseInt(inp.dataset.max);
+  inp.classList.toggle('over', (parseInt(inp.value)||0) > max);
+}
+
+function refreshTableCounts() {
+  if (!Object.keys(adData).length) return;
+  document.querySelectorAll('.count-input').forEach(inp => {
+    const code = inp.dataset.code;
+    const stock = filteredIds(code).length;
+    inp.dataset.max = stock;
+    inp.max = stock;
+    inp.value = Math.min(parseInt(inp.value)||0, stock);
+    inp.disabled = stock === 0;
+    validateInput(inp);
+    const cell = document.querySelector(`[data-stock="${code}"]`);
+    if (cell) { cell.textContent = stock.toLocaleString(); cell.classList.toggle('stock-zero', stock===0); }
+    const chk = document.querySelector(`[data-code-check="${code}"]`);
+    if (chk) chk.disabled = stock === 0;
+  });
+}
+
+// DEFAULT APPLY
+document.getElementById('btnApplyDefault').addEventListener('click', () => {
+  const def = parseInt(document.getElementById('defaultCount').value)||50;
+  document.querySelectorAll('.count-input').forEach(inp => {
+    if (inp.disabled) return;
+    inp.value = Math.min(def, parseInt(inp.dataset.max));
+    validateInput(inp);
+  });
+  updateStats();
+});
+
+// CHECK ALL
+document.getElementById('thCheckAll').addEventListener('click', () => {
+  const checks = [...document.querySelectorAll('[data-code-check]:not(:disabled)')];
+  if (!checks.length) return;
+  const allChecked = checks.every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+  document.getElementById('checkAllIcon').textContent = allChecked ? '☐' : '☑';
+  updateStats();
+});
+
+function syncCheckAllIcon() {
+  const checks = [...document.querySelectorAll('[data-code-check]:not(:disabled)')];
+  if (!checks.length) return;
+  document.getElementById('checkAllIcon').textContent = checks.every(c => c.checked) ? '☑' : '☐';
+}
+
+// STATS
+function updateStats() {
+  let codes=0, total=0;
+  document.querySelectorAll('.count-input').forEach(inp => {
+    const code = inp.dataset.code;
+    const chk = document.querySelector(`[data-code-check="${code}"]`);
+    if (!chk||!chk.checked) return;
+    const val = Math.max(0, parseInt(inp.value)||0);
+    if (val>0) { codes++; total += Math.min(val, parseInt(inp.dataset.max)); }
+  });
+  document.getElementById('statCodes').textContent = codes;
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+}
+
+// EXTRACT
+document.getElementById('btnExtract').addEventListener('click', () => {
+  const ids=[], breakdownLines=[];
+  document.querySelectorAll('.count-input').forEach(inp => {
+    const code = inp.dataset.code;
+    const chk = document.querySelector(`[data-code-check="${code}"]`);
+    if (!chk||!chk.checked) return;
+    const val = Math.max(0, parseInt(inp.value)||0);
+    const pool = filteredIds(code);
+    const take = Math.min(val, pool.length);
+    if (take===0) { breakdownLines.push(`<span class="bk-zero">${code}: スキップ</span>`); return; }
+    const sliced = pool.slice(0, take);
+    sliced.forEach(e => ids.push(e.id));
+    const cc={};
+    sliced.forEach(e => { cc[e.carrier]=(cc[e.carrier]||0)+1; });
+    const cStr = CARRIERS.filter(c=>cc[c.id])
+      .map(c=>`<span class="bk-carrier" style="color:var(--c-${c.id})">${c.label}:${cc[c.id]}</span>`)
+      .join('');
+    breakdownLines.push(`<span class="bk-code">${code}</span>: ${take}件 ${cStr}`);
+  });
+  document.getElementById('idOutput').value = ids.join('\n');
+  document.getElementById('breakdown').innerHTML = breakdownLines.join('<br>');
+  document.getElementById('statTotal').textContent = ids.length.toLocaleString();
+  document.getElementById('resultEmpty').style.display = 'none';
+  document.getElementById('resultContent').classList.add('show');
+});
+
+// COPY
+function doCopy(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const n = text.split('\n').filter(Boolean).length;
+    document.getElementById('copyMsg').textContent = `✓ ${n.toLocaleString()}件コピーしました`;
+    setTimeout(()=>{ btn.classList.remove('copied'); document.getElementById('copyMsg').textContent=''; }, 2000);
+  });
+}
+document.getElementById('btnCopyNewline').addEventListener('click', function() { doCopy(document.getElementById('idOutput').value, this); });
+document.getElementById('btnCopyComma').addEventListener('click', function() {
+  doCopy(document.getElementById('idOutput').value.split('\n').filter(Boolean).join(','), this);
+});
+</script>
+</body>
+</html>
