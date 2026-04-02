@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会員ID 抽出ツール</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+:root {
+  --bg:       #0d0f14;
+  --surface:  #151820;
+  --surface2: #1c2030;
+  --border:   #252a38;
+  --border2:  #2e3548;
+  --accent:   #4f9cf9;
+  --green:    #38d9a9;
+  --danger:   #ff6b6b;
+  --warn:     #ffd43b;
+  --text:     #e8ecf4;
+  --text2:    #8892a4;
+  --text3:    #545d6e;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Noto Sans JP', sans-serif;
+  --c-docomo:   #e60012;
+  --c-au:       #ea6b00;
+  --c-softbank: #009ac7;
+  --c-gmail:    #ea4335;
+  --c-yahoo:    #6a0dad;
+  --c-hotmail:  #0078d4;
+  --c-icloud:   #aaaacc;
+  --c-sms:      #38d9a9;
+  --c-other:    #888;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--sans); font-size: 13px;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ─── HEADER ─── */
+.header {
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.header-icon {
+  width: 28px; height: 28px; background: var(--accent); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.header h1 { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+
+.upload-btn {
+  position: relative; display: inline-flex; align-items: center; gap: 7px;
+}
+.upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.btn {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--text); font-family: var(--sans); font-size: 11px; font-weight: 700;
+  padding: 5px 12px; cursor: pointer; white-space: nowrap; transition: border-color .15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary {
+  background: linear-gradient(135deg, #4f9cf9, #38d9a9);
+  color: #0d0f14; border: none; font-size: 12px; padding: 6px 20px;
+  transition: opacity .15s, transform .1s;
+}
+.btn.primary:hover { opacity: .88; transform: translateY(-1px); }
+.btn.primary:active { transform: translateY(0); }
+.btn.primary:disabled { opacity: .3; cursor: not-allowed; transform: none; }
+.btn.accent { background: var(--accent); color: #fff; border: none; font-size: 11px; }
+.btn.accent:hover { opacity: .85; }
+
+.upload-name {
+  font-family: var(--mono); font-size: 10px; color: var(--green);
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vdiv { width: 1px; height: 22px; background: var(--border2); }
+.label-sm { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.num-input {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 4px 6px; width: 64px; outline: none; text-align: center;
+}
+.num-input:focus { border-color: var(--accent); }
+.stat-chip {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  font-family: var(--mono); font-size: 11px; padding: 3px 10px; color: var(--text2); white-space: nowrap;
+}
+.stat-chip b { color: var(--green); }
+.ml-auto { margin-left: auto; }
+
+/* ─── MAIN ─── */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ─── LEFT: AD CODE TABLE ─── */
+.left {
+  width: 420px; min-width: 380px; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.left-scroll { flex: 1; overflow-y: auto; }
+
+.ad-table { width: 100%; border-collapse: collapse; }
+.ad-table th {
+  font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .07em; padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--border); text-align: left;
+  position: sticky; top: 0; background: var(--bg); z-index: 2;
+}
+.ad-table th.r { text-align: right; }
+.ad-table th.c { text-align: center; cursor: pointer; user-select: none; }
+.ad-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.ad-table tr:hover td { background: rgba(255,255,255,.015); }
+.code-name { font-family: var(--mono); font-size: 11px; color: var(--text); word-break: break-all; }
+.stock-num { text-align: right; font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.stock-zero { color: var(--text3); }
+.count-input {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 600;
+  padding: 3px 5px; width: 58px; outline: none; text-align: center;
+}
+.count-input:focus { border-color: var(--accent); }
+.count-input.over { border-color: var(--danger) !important; color: var(--danger) !important; }
+.count-input:disabled { opacity: .3; cursor: not-allowed; }
+.check-cell { text-align: center; }
+.check-cell input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+
+.tbl-empty { padding: 48px 20px; text-align: center; color: var(--text3); }
+.tbl-empty .icon { font-size: 32px; opacity: .35; margin-bottom: 8px; }
+.tbl-empty p { font-size: 12px; }
+
+/* ─── RIGHT PANEL ─── */
+.right { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* キャリア設定 */
+.carrier-config {
+  padding: 14px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.section-title {
+  font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title span { color: var(--text3); }
+
+.carrier-rows { display: flex; flex-direction: column; gap: 4px; }
+.carrier-row {
+  display: flex; align-items: center; gap: 0; border-radius: 5px;
+  overflow: hidden; border: 1px solid var(--border);
+}
+.carrier-row-label {
+  width: 96px; min-width: 96px; padding: 6px 10px;
+  font-size: 11px; font-weight: 700;
+  border-right: 1px solid var(--border);
+}
+.carrier-limit-wrap {
+  flex: 1; display: flex; align-items: center; gap: 0;
+  background: var(--surface2);
+}
+.carrier-limit-input {
+  flex: 1; background: transparent; border: none;
+  color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 600;
+  padding: 6px 10px; outline: none; text-align: right; min-width: 0;
+}
+.carrier-limit-input::placeholder { color: var(--text3); font-weight: 400; font-size: 11px; }
+.cl-unit { font-size: 11px; color: var(--text3); padding-right: 8px; white-space: nowrap; }
+.carrier-stock {
+  width: 100px; min-width: 100px; padding: 6px 10px; text-align: right;
+  font-family: var(--mono); font-size: 11px; color: var(--text3);
+  background: var(--surface); border-left: 1px solid var(--border);
+  white-space: nowrap;
+}
+.carrier-stock b { color: var(--text2); }
+.carrier-progress {
+  width: 100px; min-width: 100px; padding: 4px 10px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; justify-content: center; gap: 2px;
+}
+.cp-bar-wrap { height: 3px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+.cp-bar { height: 100%; border-radius: 2px; transition: width .3s; }
+.cp-text { font-family: var(--mono); font-size: 9px; color: var(--text3); text-align: right; }
+.cp-text.ok  { color: var(--green); }
+.cp-text.over { color: var(--danger); }
+
+.config-footer {
+  margin-top: 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.config-stat { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+.config-stat b { color: var(--green); }
+.config-stat.warn b { color: var(--warn); }
+
+/* 結果エリア */
+.result-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 14px 20px; gap: 10px; }
+.result-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 12px; }
+.result-content { display: none; flex-direction: column; gap: 10px; flex: 1; overflow: hidden; }
+.result-content.show { display: flex; }
+
+.breakdown {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; font-family: var(--mono); font-size: 11px; color: var(--text2);
+  line-height: 1.9; max-height: 160px; overflow-y: auto; flex-shrink: 0;
+}
+.bk-head { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.bk-code { color: var(--text); }
+.bk-zero { color: var(--text3); }
+.bk-sep { height: 1px; background: var(--border); margin: 6px 0; }
+
+.id-box { flex: 1; display: flex; flex-direction: column; gap: 6px; overflow: hidden; min-height: 0; }
+.id-box-label { font-family: var(--mono); font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; }
+.id-textarea {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px;
+  color: var(--green); font-family: var(--mono); font-size: 12px; line-height: 1.8;
+  padding: 10px 12px; resize: none; outline: none; overflow-y: auto;
+}
+.id-textarea:focus { border-color: var(--accent); }
+
+.copy-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+.btn-copy {
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px;
+  color: var(--text); font-family: var(--sans); font-size: 11px; font-weight: 700;
+  padding: 5px 12px; cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 5px;
+}
+.btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+.btn-copy.copied { border-color: var(--green); color: var(--green); }
+.copy-msg { font-size: 11px; color: var(--text3); }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<div class="header">
+  <div class="header-icon">📤</div>
+  <h1>会員ID 抽出ツール</h1>
+  <div class="vdiv"></div>
+  <label class="upload-btn">
+    <input type="file" id="csvInput" accept=".csv" />
+    <span class="btn">📂 CSV読み込み</span>
+  </label>
+  <div class="upload-name" id="uploadName">ファイル未選択</div>
+  <div class="vdiv"></div>
+  <span class="label-sm">デフォルト件数</span>
+  <input type="number" class="num-input" id="defaultCount" value="10000" min="1" />
+  <button class="btn accent" id="btnApplyDefault">全コードに適用</button>
+  <div class="vdiv"></div>
+  <div class="stat-chip">コード: <b id="statCodes">0</b></div>
+  <div class="stat-chip">合計: <b id="statTotal">0</b> 件</div>
+  <button class="btn primary ml-auto" id="btnExtract" disabled>▶ IDを抽出する</button>
+</div>
+
+<!-- ─── MAIN ─── -->
+<div class="main">
+
+  <!-- LEFT: 広告コード表 -->
+  <div class="left">
+    <div class="left-scroll">
+      <div class="tbl-empty" id="tblEmpty">
+        <div class="icon">📋</div>
+        <p>CSVを読み込むと広告コード一覧が表示されます</p>
+      </div>
+      <table class="ad-table" id="adTable" style="display:none">
+        <thead>
+          <tr>
+            <th>広告コード</th>
+            <th class="r">在庫</th>
+            <th class="r">抽出数</th>
+            <th class="c" id="thCheckAll"><span id="checkIcon">☑</span></th>
+          </tr>
+        </thead>
+        <tbody id="adBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+
+    <!-- キャリア送信設定 -->
+    <div class="carrier-config" id="carrierConfig">
+      <div class="section-title">
+        📡 キャリア別 送信上限
+        <span style="font-family:var(--sans);text-transform:none;letter-spacing:0;font-weight:400">（空欄 = 今日は送らない）</span>
+        <button class="btn ml-auto" id="btnCopyRecord" style="font-size:10px;padding:3px 10px">📋 記録コピー</button>
+      </div>
+      <div class="carrier-rows" id="carrierRows"></div>
+      <div class="config-footer">
+        <div class="config-stat">上限合計: <b id="cfgLimitTotal">─</b> 件</div>
+        <div class="config-stat">在庫合計（設定分）: <b id="cfgStockTotal">─</b> 件</div>
+        <div class="config-stat" id="cfgShortage" style="display:none">不足: <b id="cfgShortageVal">─</b> 件</div>
+      </div>
+    </div>
+
+    <!-- 結果 -->
+    <div class="result-area">
+      <div class="result-placeholder" id="resultPlaceholder">
+        「IDを抽出する」を押すと結果が表示されます
+      </div>
+      <div class="result-content" id="resultContent">
+        <div class="breakdown" id="breakdown"></div>
+        <div class="id-box">
+          <div class="id-box-label">抽出された会員ID</div>
+          <textarea class="id-textarea" id="idOutput" readonly></textarea>
+        </div>
+        <div class="copy-row">
+          <button class="btn-copy" id="btnCopyNL">📋 改行区切りでコピー</button>
+          <button class="btn-copy" id="btnCopyCS">📋 カンマ区切りでコピー</button>
+          <span class="copy-msg" id="copyMsg"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── キャリア定義 ───
+const CARRIERS = [
+  { id:'docomo',    label:'ドコモ',          color:'var(--c-docomo)',   domains:['docomo.ne.jp','docomo.com'] },
+  { id:'au',        label:'AU',               color:'var(--c-au)',       domains:['au.com','au.kddi.com'] },
+  { id:'ezweb',     label:'EZweb',            color:'#f5a623',           domains:['ezweb.ne.jp'] },
+  { id:'softbank',  label:'ソフトバンク',     color:'var(--c-softbank)', domains:['softbank.ne.jp','vodafone.ne.jp','disney.ne.jp'] },
+  { id:'isoftbank', label:'i.softbank',       color:'#5bc8f5',           domains:['i.softbank.jp'] },
+  { id:'gmail',     label:'Gmail',             color:'var(--c-gmail)',    domains:['gmail.com'] },
+  { id:'yahoo',     label:'ヤフー',           color:'var(--c-yahoo)',    domains:['yahoo.co.jp','ybb.ne.jp','yahoo.ne.jp'] },
+  { id:'hotmail',   label:'ホットメール',     color:'var(--c-hotmail)',  domains:['hotmail.com','hotmail.co.jp'] },
+  { id:'outlook',   label:'Outlook',           color:'#28a8e8',           domains:['outlook.com','outlook.jp','live.com','live.jp','msn.com'] },
+  { id:'icloud',    label:'iCloud',             color:'var(--c-icloud)',   domains:['icloud.com','me.com','mac.com'] },
+  { id:'other',     label:'その他',            color:'var(--c-other)',    domains:[] },
+];
+
+const domainMap = {};
+CARRIERS.forEach(c => c.domains.forEach(d => { domainMap[d] = c.id; }));
+function detectCarrier(email) {
+  return domainMap[(email.split('@')[1]||'').toLowerCase().trim()] || 'other';
+}
+
+// adData[code] = [{id, carrier}, ...]
+let adData = {};
+
+// ─── キャリア設定UI描画 ───
+function buildCarrierRows() {
+  const wrap = document.getElementById('carrierRows');
+  wrap.innerHTML = '';
+  CARRIERS.forEach(c => {
+    const row = document.createElement('div');
+    row.className = 'carrier-row';
+    row.innerHTML = `
+      <div class="carrier-row-label" style="background:var(--surface2);color:${c.color}">${c.label}</div>
+      <div class="carrier-limit-wrap">
+        <input type="number" class="carrier-limit-input" data-climit="${c.id}"
+          placeholder="送らない" min="0" />
+        <span class="cl-unit">件</span>
+      </div>
+      <div class="carrier-stock" id="cstock-${c.id}">在庫 <b>─</b></div>
+      <div class="carrier-progress" id="cprog-${c.id}">
+        <div class="cp-bar-wrap"><div class="cp-bar" id="cpbar-${c.id}" style="width:0%;background:${c.color}"></div></div>
+        <div class="cp-text" id="cptext-${c.id}">─</div>
+      </div>`;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('.carrier-limit-input').forEach(inp => {
+    inp.addEventListener('input', () => { updateCarrierFooter(); updateProgress(); updateStats(); });
+  });
+}
+buildCarrierRows();
+
+function getLimit(cid) {
+  const inp = document.querySelector(`.carrier-limit-input[data-climit="${cid}"]`);
+  if (!inp || inp.value === '') return null; // null = 送らない
+  return Math.max(0, parseInt(inp.value)||0);
+}
+
+// 在庫数をキャリア行に反映
+function updateCarrierStocks() {
+  const totals = {};
+  CARRIERS.forEach(c => { totals[c.id] = 0; });
+  Object.values(adData).forEach(entries => entries.forEach(e => { totals[e.carrier]++; }));
+  CARRIERS.forEach(c => {
+    const el = document.getElementById(`cstock-${c.id}`);
+    if (el) el.innerHTML = `在庫 <b>${totals[c.id].toLocaleString()}</b>`;
+  });
+}
+
+// フッター集計
+function updateCarrierFooter() {
+  let limitSum = 0, hasLimit = false;
+  const totals = {};
+  CARRIERS.forEach(c => { totals[c.id] = 0; });
+  Object.values(adData).forEach(entries => entries.forEach(e => { totals[e.carrier]++; }));
+  let stockSum = 0;
+  CARRIERS.forEach(c => {
+    const lim = getLimit(c.id);
+    if (lim !== null) { limitSum += lim; stockSum += Math.min(lim, totals[c.id]); hasLimit = true; }
+  });
+  document.getElementById('cfgLimitTotal').textContent = hasLimit ? limitSum.toLocaleString() + '件' : '─';
+  document.getElementById('cfgStockTotal').textContent  = hasLimit ? stockSum.toLocaleString() + '件' : '─';
+}
+
+// プログレスバー更新（選択中のadコードからの集計）
+function updateProgress() {
+  // 選択中のadコードからキャリア別に何件あるか
+  const pool = {};
+  CARRIERS.forEach(c => { pool[c.id] = 0; });
+  document.querySelectorAll('.count-input').forEach(inp => {
+    const code = inp.dataset.code;
+    const chk = document.querySelector(`[data-code-check="${code}"]`);
+    if (!chk || !chk.checked) return;
+    const val = Math.min(parseInt(inp.value)||0, parseInt(inp.dataset.max)||0);
+    // 全キャリア対象で按分
+    const entries = (adData[code]||[]).slice(0, val * 10); // 概算用
+    // 正確に: キャリアフィルタなしで上位val件を取る
+    const take = (adData[code]||[]).slice(0, val);
+    take.forEach(e => { pool[e.carrier]++; });
+  });
+
+  CARRIERS.forEach(c => {
+    const lim = getLimit(c.id);
+    const cur = pool[c.id];
+    const bar  = document.getElementById(`cpbar-${c.id}`);
+    const text = document.getElementById(`cptext-${c.id}`);
+    if (!bar || !text) return;
+    if (lim === null) {
+      bar.style.width = '0%';
+      text.textContent = '─'; text.className = 'cp-text';
+      return;
+    }
+    const pct = lim > 0 ? Math.min(100, (cur / lim) * 100) : 0;
+    bar.style.width = pct + '%';
+    if (cur >= lim) {
+      text.textContent = `${cur.toLocaleString()} / ${lim.toLocaleString()} ✓`;
+      text.className = 'cp-text ok';
+    } else {
+      text.textContent = `${cur.toLocaleString()} / ${lim.toLocaleString()}`;
+      text.className = 'cp-text';
+    }
+  });
+}
+
+// ─── CSV読み込み ───
+document.getElementById('csvInput').addEventListener('change', function() {
+  if (this.files[0]) processFile(this.files[0]);
+});
+
+function processFile(file) {
+  document.getElementById('uploadName').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let text;
+    try {
+      text = new TextDecoder('shift-jis').decode(new Uint8Array(e.target.result));
+      if ((text.match(/\uFFFD/g)||[]).length > 20)
+        text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result));
+    } catch { text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result)); }
+    parseCSV(text);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return;
+  const hdr = parseCSVLine(lines[0]);
+  const adIdx  = hdr.findIndex(h => h.includes('広告コード'));
+  const idIdx  = hdr.findIndex(h => h.includes('会員ID'));
+  const emIdx  = hdr.findIndex(h => h.includes('メール'));
+  if (adIdx<0||idIdx<0) { alert('広告コード列または会員ID列が見つかりません'); return; }
+  adData = {};
+  for (let i=1; i<lines.length; i++) {
+    const row = parseCSVLine(lines[i]);
+    if (row.length <= Math.max(adIdx,idIdx)) continue;
+    const code = row[adIdx].trim(), id = row[idIdx].trim();
+    const email = emIdx>=0 ? (row[emIdx]||'').trim() : '';
+    if (!code||!id) continue;
+    (adData[code] = adData[code]||[]).push({ id, carrier: detectCarrier(email) });
+  }
+  renderTable();
+  updateCarrierStocks();
+  updateCarrierFooter();
+}
+
+function parseCSVLine(line) {
+  const res=[]; let cur=''; let inQ=false;
+  for (const c of line) {
+    if(c==='"') inQ=!inQ;
+    else if(c===','&&!inQ){ res.push(cur); cur=''; }
+    else cur+=c;
+  }
+  return [...res, cur];
+}
+
+// ─── テーブル描画 ───
+function renderTable() {
+  const body = document.getElementById('adBody');
+  body.innerHTML = '';
+  const codes = Object.keys(adData).sort();
+  const def = parseInt(document.getElementById('defaultCount').value)||50;
+
+  codes.forEach(code => {
+    const total = adData[code].length;
+    const val = Math.min(def, total);
+    const tr = document.createElement('tr');
+    tr.dataset.code = code;
+    tr.innerHTML = `
+      <td><div class="code-name">${code}</div></td>
+      <td class="stock-num ${total===0?'stock-zero':''}" data-stock="${code}">${total.toLocaleString()}</td>
+      <td style="text-align:right">
+        <input type="number" class="count-input" value="${val}" min="0" max="${total}"
+          data-code="${code}" data-max="${total}" ${total===0?'disabled':''} />
+      </td>
+      <td class="check-cell">
+        <input type="checkbox" ${total>0?'checked':''} data-code-check="${code}" ${total===0?'disabled':''} />
+      </td>`;
+    body.appendChild(tr);
+  });
+
+  body.querySelectorAll('.count-input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      inp.classList.toggle('over', (parseInt(inp.value)||0) > parseInt(inp.dataset.max));
+      updateStats(); updateProgress();
+    });
+  });
+  body.querySelectorAll('[data-code-check]').forEach(chk => {
+    chk.addEventListener('change', () => { updateStats(); syncCheckIcon(); updateProgress(); });
+  });
+
+  document.getElementById('tblEmpty').style.display = 'none';
+  document.getElementById('adTable').style.display = 'table';
+  document.getElementById('btnExtract').disabled = false;
+  document.getElementById('checkIcon').textContent = '☑';
+  updateStats(); updateProgress();
+}
+
+// ─── 全選択/解除 ───
+document.getElementById('thCheckAll').addEventListener('click', () => {
+  const checks = [...document.querySelectorAll('[data-code-check]:not(:disabled)')];
+  if (!checks.length) return;
+  const all = checks.every(c => c.checked);
+  checks.forEach(c => c.checked = !all);
+  document.getElementById('checkIcon').textContent = all ? '☐' : '☑';
+  updateStats(); updateProgress();
+});
+function syncCheckIcon() {
+  const checks = [...document.querySelectorAll('[data-code-check]:not(:disabled)')];
+  document.getElementById('checkIcon').textContent = checks.length && checks.every(c=>c.checked) ? '☑' : '☐';
+}
+
+// ─── デフォルト適用 ───
+document.getElementById('btnApplyDefault').addEventListener('click', () => {
+  const def = parseInt(document.getElementById('defaultCount').value)||50;
+  document.querySelectorAll('.count-input').forEach(inp => {
+    if (inp.disabled) return;
+    inp.value = Math.min(def, parseInt(inp.dataset.max));
+    inp.classList.remove('over');
+  });
+  updateStats(); updateProgress();
+});
+
+// ─── ヘッダー統計 ───
+function updateStats() {
+  let codes=0, total=0;
+  document.querySelectorAll('.count-input').forEach(inp => {
+    const chk = document.querySelector(`[data-code-check="${inp.dataset.code}"]`);
+    if (!chk||!chk.checked) return;
+    const v = Math.min(parseInt(inp.value)||0, parseInt(inp.dataset.max)||0);
+    if (v>0) { codes++; total+=v; }
+  });
+  document.getElementById('statCodes').textContent = codes;
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+}
+
+// ─── 抽出 ───
+document.getElementById('btnExtract').addEventListener('click', () => {
+  // 広告コード別に全IDs収集
+  const carrierBuckets = {};
+  CARRIERS.forEach(c => { carrierBuckets[c.id] = []; });
+  const adLines = [];
+
+  document.querySelectorAll('.count-input').forEach(inp => {
+    const code = inp.dataset.code;
+    const chk = document.querySelector(`[data-code-check="${code}"]`);
+    if (!chk||!chk.checked) return;
+    const val = Math.min(parseInt(inp.value)||0, parseInt(inp.dataset.max)||0);
+    if (val===0) { adLines.push(`<span class="bk-zero">${code}: スキップ</span>`); return; }
+    const sliced = (adData[code]||[]).slice(0, val);
+    const cc = {};
+    sliced.forEach(e => {
+      carrierBuckets[e.carrier].push(e.id);
+      cc[e.carrier] = (cc[e.carrier]||0)+1;
+    });
+    const cstr = CARRIERS.filter(c=>cc[c.id])
+      .map(c=>`<span style="color:${c.color};font-size:10px">${c.label}:${cc[c.id]}</span>`)
+      .join(' ');
+    adLines.push(`<span class="bk-code">${code}</span>: ${val.toLocaleString()}件 ${cstr}`);
+  });
+
+  // キャリア上限適用
+  const finalIds = [];
+  const cLines = [];
+  CARRIERS.forEach(c => {
+    const pool = carrierBuckets[c.id];
+    const lim = getLimit(c.id);
+
+    // 空欄（null）= 今日は送らない → 除外
+    if (lim === null) {
+      if (pool.length > 0) cLines.push(`<span style="color:var(--text3)">${c.label}: スキップ（${pool.length.toLocaleString()}件）</span>`);
+      return;
+    }
+    // 0 = 明示的に0件
+    if (lim === 0) {
+      if (pool.length > 0) cLines.push(`<span style="color:var(--text3)">${c.label}: 0件</span>`);
+      return;
+    }
+    const actual = pool.slice(0, lim);
+    finalIds.push(...actual);
+    const cutStr = pool.length > lim
+      ? ` <span style="color:var(--danger);font-size:10px">(${pool.length.toLocaleString()}件→${lim.toLocaleString()}件にカット)</span>` : '';
+    if (actual.length > 0)
+      cLines.push(`<span style="color:${c.color}">${c.label}: ${actual.length.toLocaleString()}件</span>${cutStr}`);
+  });
+
+  const bkHtml =
+    `<div class="bk-head">広告コード別</div>` + adLines.join('<br>') +
+    `<div class="bk-sep"></div>` +
+    `<div class="bk-head">キャリア別（上限適用後）</div>` + cLines.join('<br>');
+
+  document.getElementById('idOutput').value = finalIds.join('\n');
+  document.getElementById('breakdown').innerHTML = bkHtml;
+  document.getElementById('statTotal').textContent = finalIds.length.toLocaleString();
+  document.getElementById('resultPlaceholder').style.display = 'none';
+  document.getElementById('resultContent').classList.add('show');
+});
+
+// ─── 記録コピー ───
+document.getElementById('btnCopyRecord').addEventListener('click', function() {
+  const totals = {};
+  CARRIERS.forEach(c => { totals[c.id] = 0; });
+  Object.values(adData).forEach(es => es.forEach(e => { totals[e.carrier]++; }));
+  const now = new Date();
+  const d = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
+  let text = `【キャリア別 在庫/上限】${d}\n`;
+  CARRIERS.forEach(c => {
+    const lim = getLimit(c.id);
+    const limStr = lim === null ? '(送らない)' : lim === 0 ? '0件' : `上限${lim.toLocaleString()}件`;
+    text += `${c.label}: 在庫${totals[c.id].toLocaleString()}件 ${limStr}\n`;
+  });
+  navigator.clipboard.writeText(text).then(() => {
+    this.textContent = '✓ コピーしました';
+    setTimeout(()=>{ this.textContent = '📋 記録コピー'; }, 2000);
+  });
+});
+
+// ─── コピー ───
+function doCopy(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const n = text.split('\n').filter(Boolean).length;
+    document.getElementById('copyMsg').textContent = `✓ ${n.toLocaleString()}件コピーしました`;
+    setTimeout(()=>{ btn.classList.remove('copied'); document.getElementById('copyMsg').textContent=''; }, 2000);
+  });
+}
+document.getElementById('btnCopyNL').addEventListener('click', function() { doCopy(document.getElementById('idOutput').value, this); });
+document.getElementById('btnCopyCS').addEventListener('click', function() {
+  doCopy(document.getElementById('idOutput').value.split('\n').filter(Boolean).join(','), this);
+});
+</script>
+</body>
+</html>
