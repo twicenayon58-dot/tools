@@ -98,6 +98,35 @@ td.grpsep{border-left:2px solid var(--border)}
 .chk-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--accent)}
 .chk-all{display:flex;gap:8px;margin-bottom:8px}
 
+/* Daily report */
+#tab-daily{display:flex;flex-direction:column;height:100%}
+.daily-controls{background:var(--s1);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex-shrink:0}
+.daily-controls label{font-size:11px;color:var(--text2);white-space:nowrap}
+.daily-controls select{background:var(--s2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:6px;font-size:12px;font-family:var(--sans)}
+.daily-controls select:focus{outline:none;border-color:var(--accent)}
+.daily-wrap{flex:1;overflow:auto;padding:12px 16px}
+.daily-wrap table{border-collapse:collapse;font-size:11.5px;white-space:nowrap}
+.daily-wrap thead th{background:var(--s2);padding:7px 10px;text-align:center;font-weight:600;font-size:10.5px;color:var(--text2);border-bottom:2px solid var(--border);border-right:1px solid var(--border);position:sticky;top:0;z-index:2}
+.daily-wrap thead th.th-date{text-align:left;min-width:110px;position:sticky;left:0;z-index:3;background:var(--s2);border-right:2px solid var(--border)}
+.daily-wrap tbody tr{border-bottom:1px solid rgba(42,58,85,.5)}
+.daily-wrap tbody tr:hover{background:rgba(26,34,51,.8)}
+.daily-wrap tbody tr.weekend-sat{background:rgba(59,130,246,.06)}
+.daily-wrap tbody tr.weekend-sun{background:rgba(239,68,68,.06)}
+.daily-wrap tbody tr.today-row{background:rgba(16,185,129,.08)}
+.daily-wrap td{padding:6px 10px;text-align:center;border-right:1px solid rgba(42,58,85,.4);font-family:var(--mono);font-size:11.5px}
+.daily-wrap td.td-date{text-align:left;font-family:var(--sans);font-size:12px;position:sticky;left:0;background:var(--bg);border-right:2px solid var(--border);font-weight:500}
+.daily-wrap tr.weekend-sat td.td-date{background:rgba(59,130,246,.1)}
+.daily-wrap tr.weekend-sun td.td-date{background:rgba(239,68,68,.1)}
+.daily-wrap tr.today-row td.td-date{background:rgba(16,185,129,.12)}
+.daily-wrap td.zero{color:var(--text3)}
+.daily-wrap td.has-val{color:var(--accent);font-weight:600}
+.daily-wrap td.td-total{font-weight:700;color:var(--green);background:var(--s2);border-left:2px solid var(--border)}
+.daily-wrap tr.sum-row td{background:var(--s2);font-weight:700;font-size:11px;color:var(--green);border-top:2px solid var(--border);position:sticky;bottom:0;z-index:1}
+.daily-wrap tr.sum-row td.td-date{color:var(--text2);background:var(--s2)}
+.dow-sat{color:#60a5fa}
+.dow-sun{color:#f87171}
+.dow-hol{color:#f87171}
+
 /* Settings */
 #tab-settings{padding:20px;overflow-y:auto;height:100%}
 .sec{background:var(--s1);border:1px solid var(--border);border-radius:10px;margin-bottom:18px}
@@ -130,6 +159,7 @@ td.grpsep{border-left:2px solid var(--border)}
     <h1>広告<span>集計</span>ツール</h1>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('aggregate')">📊 集計</button>
+      <button class="tab-btn" onclick="switchTab('daily')">📅 日別レポート</button>
       <button class="tab-btn" onclick="switchTab('settings')">⚙️ 設定</button>
     </div>
   </header>
@@ -148,6 +178,11 @@ td.grpsep{border-left:2px solid var(--border)}
             <span class="dz-icon">📊</span>
             <div class="dz-label" id="lbl-excel">Excelをドロップ</div>
           </div>
+          <div class="drop-zone" id="dz-sales" ondragover="dzOver(event,'sales')" ondragleave="dzOut('sales')" ondrop="dzDrop(event,'sales')">
+            <input type="file" accept=".csv" onchange="onFile(event,'sales')">
+            <span class="dz-icon">💰</span>
+            <div class="dz-label" id="lbl-sales">売上CSVをドロップ<br><span style="font-size:10px;opacity:.7">（任意）ROAS表示用</span></div>
+          </div>
         </div>
         <div class="date-group">
           <label>登録日</label>
@@ -165,6 +200,21 @@ td.grpsep{border-left:2px solid var(--border)}
       <div class="table-wrap">
         <div id="tbl">
           <div class="no-data"><div class="icon">📂</div><p>CSVとExcelを上にドロップしてください</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 日別レポートタブ -->
+    <div id="tab-daily" style="display:none">
+      <div class="daily-controls">
+        <label>表示月</label>
+        <select id="daily-year" onchange="renderDaily()"></select>
+        <select id="daily-month" onchange="renderDaily()"></select>
+        <button class="btn green" onclick="exportDailyCSV()">📥 CSVエクスポート</button>
+      </div>
+      <div class="daily-wrap">
+        <div id="daily-tbl">
+          <div class="no-data"><div class="icon">📂</div><p>CSVをドロップすると日別登録数が表示されます</p></div>
         </div>
       </div>
     </div>
@@ -261,11 +311,12 @@ const DEFAULTS = [
 const S = {
   csvUsers: [],       // CSVから取得したユーザー
   excelMap: {},       // {masterID: {sendCount, hasLogin}}
+  salesData: [],      // 売上管理CSVから取得した売上 [{date, adCode, amount}]
   settings: [],
   manualCosts: {},
   dateFrom: '', dateTo: '',
   showStopped: false,
-  csvLoaded: false, excelLoaded: false,
+  csvLoaded: false, excelLoaded: false, salesLoaded: false,
   lastRows: [],
 };
 
@@ -309,7 +360,53 @@ async function parseCSV(file) {
   return users;
 }
 
-// ===== Excel パース =====
+// ===== 売上管理CSVパース =====
+// 売上管理のexCSV()出力: 日付,会員ID,名前,広告,金額,処理額,CSV%,入金先,コード,業者,送日,タグ
+// col0=日付(YYYY-MM-DD), col3=広告コード, col4=金額
+async function parseSalesCSV(file) {
+  const buf = await file.arrayBuffer();
+  let text;
+  // BOM付きUTF-8で出力されるので
+  try { text = new TextDecoder('utf-8').decode(buf); }
+  catch { text = new TextDecoder('shift-jis').decode(buf); }
+  // BOM除去
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/);
+  const sales = [];
+  for (let i = 1; i < lines.length; i++) { // 1行目はヘッダー
+    const line = lines[i];
+    if (!line.trim()) continue;
+    // CSVの各フィールドはダブルクォートで囲まれている
+    const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
+    if (cols.length < 5) continue;
+    const date   = (cols[0]||'').trim();
+    const adCode = (cols[3]||'').trim();
+    const amount = parseInt((cols[4]||'').replace(/[^0-9]/g,''))||0;
+    if (!date || !adCode || amount <= 0) continue;
+    // 日付形式を YYYY-MM-DD に正規化
+    const normalDate = date.substring(0,10);
+    sales.push({ date: normalDate, adCode, amount });
+  }
+  return sales;
+}
+
+// 売上データから今月・累計の売上をコード別に集計
+function buildSalesMap() {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  // dateFromが設定されていれば「今月」はフィルター月を使う
+  const filterMonth = S.dateFrom ? S.dateFrom.substring(0,7) : thisMonth;
+
+  const monthRev = {}; // {adCode: 今月売上}
+  const totalRev = {}; // {adCode: 累計売上}
+  for (const s of S.salesData) {
+    if (!monthRev[s.adCode]) monthRev[s.adCode] = 0;
+    if (!totalRev[s.adCode]) totalRev[s.adCode] = 0;
+    totalRev[s.adCode] += s.amount;
+    if (s.date.startsWith(filterMonth)) monthRev[s.adCode] += s.amount;
+  }
+  return { monthRev, totalRev, filterMonth };
+}
 // 4行1ユーザー、index2から開始
 // row1[1]=マスターID, row1[6]="送信X"（送信数）
 // row2[12]=最終ログイン（M列）、'-'またはnullなら未ログイン、時刻があればログインあり
@@ -368,6 +465,9 @@ function aggregate() {
   const inData = [...new Set(users.map(u => u.adCode).filter(Boolean))];
   const allCodes = [...known, ...inData.filter(c => !known.includes(c))];
 
+  // 売上管理CSVの集計（ループ外で一度だけ計算）
+  const sm = S.salesLoaded ? buildSalesMap() : null;
+
   const rows = allCodes.map(code => {
     const cfg = S.settings.find(s => s.code === code) || {type:'manual',price:0,ageMin:0,gender:'all',status:'active'};
     let gu = users.filter(u => u.adCode === code);
@@ -387,8 +487,25 @@ function aggregate() {
     const rev   = gu.reduce((a, u) => a + u.totalPurchase, 0);
     const cost  = cfg.type === 'af' ? reg * cfg.price : (S.manualCosts[code] || 0);
 
+    // 売上管理CSVからの売上
+    const monthRevAmt = sm ? (sm.monthRev[code] || 0) : 0;
+    const totalRevAmt = sm ? (sm.totalRev[code] || 0) : 0;
+
+    // 累計広告費（AF: 全CSVユーザー×単価、Manual: 入力値）
+    const allUsersForCode = S.csvUsers.filter(u => {
+      if (u.adCode !== code) return false;
+      if (cfg.type === 'af') {
+        if (cfg.ageMin > 0) { const a = calcAge(u.birthDate, u.regDate); if (a === null || a < cfg.ageMin) return false; }
+        if (cfg.gender !== 'all' && u.gender !== cfg.gender) return false;
+      }
+      return true;
+    });
+    const totalReg  = allUsersForCode.length;
+    const totalCost = cfg.type === 'af' ? totalReg * cfg.price : (S.manualCosts[code] || 0);
+
     const pct = (a, b) => b > 0 ? (a/b*100).toFixed(1)+'%' : '-';
     const yen = n => n > 0 ? '¥'+n.toLocaleString() : '-';
+    const roasFmt = (r, c) => c > 0 && r > 0 ? (r/c*100).toFixed(0)+'%' : '-';
 
     return {
       code, cfg, reg, login,
@@ -401,6 +518,13 @@ function aggregate() {
       cost, costStr: cfg.type==='af' ? yen(cost) : null,
       cpa:  cost > 0 && reg > 0 ? yen(Math.round(cost/reg)) : '-',
       roas: cost > 0 && rev  > 0 ? (rev/cost*100).toFixed(1)+'%' : '-',
+      // 売上管理CSV連携
+      monthRevAmt, monthRevStr: yen(monthRevAmt),
+      totalRevAmt, totalRevStr: yen(totalRevAmt),
+      totalReg, totalCost,
+      monthRoas: roasFmt(monthRevAmt, cost),
+      totalRoas: roasFmt(totalRevAmt, totalCost),
+      filterMonth: sm ? sm.filterMonth : '',
     };
   });
 
@@ -429,6 +553,7 @@ function render() {
       <th colspan="7" style="border-left:2px solid var(--border)">移行率</th>
       <th colspan="3" style="border-left:2px solid var(--border)">課金</th>
       <th colspan="4" style="border-left:2px solid var(--border)">広告費・ROI</th>
+      ${S.salesLoaded ? `<th colspan="4" style="border-left:2px solid var(--border);color:var(--amber)">売上管理ROAS</th>` : ''}
     </tr>
     <tr>
       <th class="th-check"></th>
@@ -438,6 +563,7 @@ function render() {
       <th class="grpsep">初回率</th><th>1→2</th><th>2→3</th><th>3→4</th><th>4→5</th><th>5→6</th><th>6→7</th>
       <th class="grpsep">課金1回+</th><th>課金2回+</th><th>課金率</th>
       <th class="grpsep">売上</th><th>広告費</th><th>CPA</th><th>ROAS</th>
+      ${S.salesLoaded ? `<th class="grpsep" style="color:var(--amber)">今月売上</th><th style="color:var(--amber)">今月ROAS</th><th style="color:var(--amber)">累計売上</th><th style="color:var(--amber)">累計ROAS</th>` : ''}
     </tr></thead><tbody>`;
 
   for (const r of visible) {
@@ -467,6 +593,12 @@ function render() {
       <td style="padding:4px 8px">${costCell}</td>
       <td>${r.cpa}</td>
       <td>${r.roas}</td>
+      ${S.salesLoaded ? `
+      <td class="grpsep" style="color:var(--amber)">${r.monthRevStr}</td>
+      <td style="color:${r.monthRoas!=='-'?'#f59e0b':'var(--text3)'};font-weight:${r.monthRoas!=='-'?700:400}">${r.monthRoas}</td>
+      <td style="color:var(--amber)">${r.totalRevStr}</td>
+      <td style="color:${r.totalRoas!=='-'?'#f59e0b':'var(--text3)'};font-weight:${r.totalRoas!=='-'?700:400}">${r.totalRoas}</td>
+      ` : ''}
     </tr>`;
   }
 
@@ -496,7 +628,9 @@ function doExport() {
   const H = ['広告コード','登録数','ログイン数','ログイン率',
     '送信1以上','送信2以上','送信3以上','送信4以上','送信5以上','送信6以上','送信7以上',
     '初回送信率','送信1→2','送信2→3','送信3→4','送信4→5','送信5→6','送信6→7',
-    '課金1回以上','課金2回以上','課金率','売上','広告費','CPA','ROAS'];
+    '課金1回以上','課金2回以上','課金率','売上','広告費','CPA','ROAS',
+    ...(S.salesLoaded ? ['今月売上','今月ROAS','累計売上','累計ROAS'] : [])
+  ];
   const lines = [H.join(',')];
   for (const r of rows) {
     const cost = r.cfg.type === 'af' ? r.cost : (S.manualCosts[r.code]||0);
@@ -505,7 +639,8 @@ function doExport() {
       r.s1,r.s2,r.s3,r.s4,r.s5,r.s6,r.s7,
       r.r01,r.r12,r.r23,r.r34,r.r45,r.r56,r.r67,
       r.pay1,r.pay2,r.payRate,
-      r.rev, cost, r.cpa, r.roas
+      r.rev, cost, r.cpa, r.roas,
+      ...(S.salesLoaded ? [r.monthRevAmt, r.monthRoas, r.totalRevAmt, r.totalRoas] : [])
     ].join(','));
   }
   const blob = new Blob(['\uFEFF'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
@@ -582,6 +717,10 @@ async function loadFile(file, type) {
       S.csvUsers  = await parseCSV(file);
       S.csvLoaded = true;
       lbl.textContent = `✓ ${file.name.substring(0,22)}`;
+    } else if (type === 'sales') {
+      S.salesData   = await parseSalesCSV(file);
+      S.salesLoaded = true;
+      lbl.textContent = `✓ ${file.name.substring(0,22)}`;
     } else {
       const buf = await file.arrayBuffer();
       const wb  = XLSX.read(buf, {type:'array', cellDates:true});
@@ -592,6 +731,9 @@ async function loadFile(file, type) {
     dz.classList.remove('drag-over');
     dz.classList.add('loaded');
     render();
+    // 日別タブも更新
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab && activeTab.textContent.includes('日別')) renderDaily();
   } catch(e) {
     alert(`読み込みエラー: ${e.message}`);
     console.error(e);
@@ -603,14 +745,162 @@ function setCost(code, val) {
   render();
 }
 
+// ===== 日別レポート =====
+function initDailySelectors() {
+  const now = new Date();
+  const yearSel = document.getElementById('daily-year');
+  const monSel  = document.getElementById('daily-month');
+  // 年: 過去2年〜今年
+  yearSel.innerHTML = '';
+  for (let y = now.getFullYear()-1; y <= now.getFullYear()+1; y++) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y+'年';
+    if (y === now.getFullYear()) o.selected = true;
+    yearSel.appendChild(o);
+  }
+  // 月
+  monSel.innerHTML = '';
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m+'月';
+    if (m === now.getMonth()+1) o.selected = true;
+    monSel.appendChild(o);
+  }
+}
+
+function renderDaily() {
+  const el = document.getElementById('daily-tbl');
+  if (!S.csvLoaded) {
+    el.innerHTML = '<div class="no-data"><div class="icon">📂</div><p>CSVをドロップすると日別登録数が表示されます</p></div>';
+    return;
+  }
+  const year  = parseInt(document.getElementById('daily-year').value);
+  const month = parseInt(document.getElementById('daily-month').value);
+
+  // 稼働中の広告コードのみ（設定順）
+  const activeCodes = S.settings.filter(s => s.status === 'active').map(s => s.code);
+  // データにあるが設定にないコードも含める
+  const inData = [...new Set(S.csvUsers.map(u => u.adCode).filter(Boolean))];
+  const extraCodes = inData.filter(c => !S.settings.find(s => s.code === c));
+  const codes = [...activeCodes, ...extraCodes];
+
+  // 月の日数
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const DOW = ['日','月','火','水','木','金','土'];
+  const today = new Date();
+
+  // 日別×コード集計
+  // key: "YYYY-MM-DD" → {code: count}
+  const dayMap = {};
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    dayMap[key] = {};
+    codes.forEach(c => dayMap[key][c] = 0);
+  }
+
+  for (const u of S.csvUsers) {
+    if (!u.regDate || !codes.includes(u.adCode)) continue;
+    const d = new Date(u.regDate.replace(/\//g,'-'));
+    if (d.getFullYear() !== year || d.getMonth()+1 !== month) continue;
+    const key = `${year}-${String(month).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (dayMap[key]) dayMap[key][u.adCode] = (dayMap[key][u.adCode]||0) + 1;
+  }
+
+  // 合計行
+  const totals = {};
+  codes.forEach(c => totals[c] = 0);
+
+  // テーブル描画
+  let h = '<table><thead><tr>';
+  h += '<th class="th-date">日付</th>';
+  codes.forEach(c => h += `<th>${c}</th>`);
+  h += '<th style="border-left:2px solid var(--border)">合計</th>';
+  h += '</tr></thead><tbody>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(year, month-1, d).getDay();
+    const isToday = (new Date(year,month-1,d).toDateString() === today.toDateString());
+    const rowClass = isToday ? 'today-row' : dow===0 ? 'weekend-sun' : dow===6 ? 'weekend-sat' : '';
+    const dowLabel = DOW[dow];
+    const dowClass = dow===0||dow===6 ? (dow===0?'dow-sun':'dow-sat') : '';
+
+    let rowTotal = 0;
+    codes.forEach(c => { rowTotal += (dayMap[key][c]||0); totals[c] += (dayMap[key][c]||0); });
+
+    h += `<tr class="${rowClass}">`;
+    h += `<td class="td-date">${month}/${String(d).padStart(2,'0')} <span class="${dowClass}">${dowLabel}</span></td>`;
+    codes.forEach(c => {
+      const v = dayMap[key][c]||0;
+      h += `<td class="${v>0?'has-val':'zero'}">${v>0?v:''}</td>`;
+    });
+    h += `<td class="td-total">${rowTotal>0?rowTotal:''}</td>`;
+    h += '</tr>';
+  }
+
+  // 合計行
+  const grandTotal = codes.reduce((a,c) => a+totals[c], 0);
+  h += '<tr class="sum-row">';
+  h += `<td class="td-date">合計</td>`;
+  codes.forEach(c => h += `<td>${totals[c]||''}</td>`);
+  h += `<td class="td-total">${grandTotal}</td>`;
+  h += '</tr>';
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+function exportDailyCSV() {
+  if (!S.csvLoaded) { alert('CSVを読み込んでください'); return; }
+  const year  = parseInt(document.getElementById('daily-year').value);
+  const month = parseInt(document.getElementById('daily-month').value);
+  const activeCodes = S.settings.filter(s=>s.status==='active').map(s=>s.code);
+  const inData = [...new Set(S.csvUsers.map(u=>u.adCode).filter(Boolean))];
+  const extraCodes = inData.filter(c=>!S.settings.find(s=>s.code===c));
+  const codes = [...activeCodes,...extraCodes];
+  const daysInMonth = new Date(year,month,0).getDate();
+  const DOW=['日','月','火','水','木','金','土'];
+  const dayMap={};
+  for(let d=1;d<=daysInMonth;d++){
+    const key=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    dayMap[key]={};
+  }
+  for(const u of S.csvUsers){
+    if(!u.regDate||!codes.includes(u.adCode)) continue;
+    const d=new Date(u.regDate.replace(/\//g,'-'));
+    if(d.getFullYear()!==year||d.getMonth()+1!==month) continue;
+    const key=`${year}-${String(month).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(dayMap[key]) dayMap[key][u.adCode]=(dayMap[key][u.adCode]||0)+1;
+  }
+  const totals={};codes.forEach(c=>totals[c]=0);
+  const lines=[['日付','曜日',...codes,'合計'].join(',')];
+  for(let d=1;d<=daysInMonth;d++){
+    const key=`${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=new Date(year,month-1,d).getDay();
+    let rowTotal=0;
+    const vals=codes.map(c=>{const v=dayMap[key][c]||0;totals[c]+=v;rowTotal+=v;return v;});
+    lines.push([`${month}/${String(d).padStart(2,'0')}`,DOW[dow],...vals,rowTotal].join(','));
+  }
+  const grandTotal=codes.reduce((a,c)=>a+totals[c],0);
+  lines.push(['合計','',...codes.map(c=>totals[c]),grandTotal].join(','));
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`日別登録数_${year}${String(month).padStart(2,'0')}.csv`;
+  a.click();
+}
+
 // ===== UI =====
 function switchTab(tab) {
   document.getElementById('tab-aggregate').style.display = tab==='aggregate' ? 'flex' : 'none';
+  document.getElementById('tab-daily').style.display     = tab==='daily'     ? 'flex' : 'none';
   document.getElementById('tab-settings').style.display  = tab==='settings'  ? 'block': 'none';
   document.querySelectorAll('.tab-btn').forEach((b,i) =>
-    b.classList.toggle('active', (i===0&&tab==='aggregate')||(i===1&&tab==='settings'))
+    b.classList.toggle('active',
+      (i===0&&tab==='aggregate')||(i===1&&tab==='daily')||(i===2&&tab==='settings'))
   );
-  if (tab === 'settings') renderSettings();
+  if (tab==='settings') renderSettings();
+  if (tab==='daily') renderDaily();
 }
 function toggleStopped() {
   S.showStopped = !S.showStopped;
@@ -625,7 +915,7 @@ function clearDates() {
 }
 
 // ===== 起動 =====
-(async () => { await loadSettings(); })();
+(async () => { await loadSettings(); initDailySelectors(); })();
 </script>
 </body>
 </html>
