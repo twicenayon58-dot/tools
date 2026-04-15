@@ -281,30 +281,30 @@ td.grpsep{border-left:2px solid var(--border)}
 <script>
 // ===== デフォルト設定 =====
 const DEFAULTS = [
-  {code:'poets007_wb_line',type:'manual',price:0,ageMin:0,gender:'all',status:'active'},
-  {code:'tabu003',        type:'manual',price:0,ageMin:0,gender:'all',status:'active'},
-  {code:'spkaiC',         type:'af',price:3850,ageMin:50,gender:'f',status:'active'},
-  {code:'spkaiD',         type:'af',price:5500,ageMin:50,gender:'f',status:'active'},
-  {code:'spkaiE_mail',    type:'af',price:4950,ageMin:40,gender:'f',status:'active'},
-  {code:'kaiunK_mail',    type:'af',price:6600,ageMin:20,gender:'all',status:'active'},
-  {code:'kaiunL_mail',    type:'af',price:8800,ageMin:50,gender:'f',status:'active'},
-  {code:'kaiun_I_mail',   type:'af',price:3520,ageMin:40,gender:'f',status:'active'},
-  {code:'kaiunJ_seo_mail',type:'af',price:6600,ageMin:0, gender:'all',status:'active'},
-  {code:'LINE_yu01',      type:'af',price:4400,ageMin:0, gender:'all',status:'active'},
-  {code:'yh_af01',        type:'af',price:5500,ageMin:0, gender:'all',status:'active'},
-  {code:'meta_af01',      type:'af',price:4400,ageMin:0, gender:'all',status:'active'},
-  {code:'bigo_line01',    type:'af',price:4000,ageMin:0, gender:'all',status:'stopped'},
-  {code:'lap010_wb_line', type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'gdn_line_ishi',  type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'rf_Tura',        type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'sp_tokumei_afline',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'kinun_age_afline',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'rojikado01',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'ydn_line_nin',   type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'you_move01',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'you_move_line',  type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'rojikado_line_01',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
-  {code:'bigobigo02',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped'},
+  {code:'poets007_wb_line',type:'manual',price:0,ageMin:0,gender:'all',status:'active',agency:''},
+  {code:'tabu003',        type:'manual',price:0,ageMin:0,gender:'all',status:'active',agency:''},
+  {code:'spkaiC',         type:'af',price:3850,ageMin:50,gender:'f',status:'active',agency:''},
+  {code:'spkaiD',         type:'af',price:5500,ageMin:50,gender:'f',status:'active',agency:''},
+  {code:'spkaiE_mail',    type:'af',price:4950,ageMin:40,gender:'f',status:'active',agency:''},
+  {code:'kaiunK_mail',    type:'af',price:6600,ageMin:20,gender:'all',status:'active',agency:''},
+  {code:'kaiunL_mail',    type:'af',price:8800,ageMin:50,gender:'f',status:'active',agency:''},
+  {code:'kaiun_I_mail',   type:'af',price:3520,ageMin:40,gender:'f',status:'active',agency:''},
+  {code:'kaiunJ_seo_mail',type:'af',price:6600,ageMin:0, gender:'all',status:'active',agency:''},
+  {code:'LINE_yu01',      type:'af',price:4400,ageMin:0, gender:'all',status:'active',agency:''},
+  {code:'yh_af01',        type:'af',price:5500,ageMin:0, gender:'all',status:'active',agency:''},
+  {code:'meta_af01',      type:'af',price:4400,ageMin:0, gender:'all',status:'active',agency:''},
+  {code:'bigo_line01',    type:'af',price:4000,ageMin:0, gender:'all',status:'stopped',agency:''},
+  {code:'lap010_wb_line', type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'gdn_line_ishi',  type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'rf_Tura',        type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'sp_tokumei_afline',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'kinun_age_afline',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'rojikado01',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'ydn_line_nin',   type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'you_move01',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'you_move_line',  type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'rojikado_line_01',type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
+  {code:'bigobigo02',     type:'manual',price:0,ageMin:0,gender:'all',status:'stopped',agency:''},
 ];
 
 // ===== State =====
@@ -366,28 +366,46 @@ async function parseCSV(file) {
 async function parseSalesCSV(file) {
   const buf = await file.arrayBuffer();
   let text;
-  // BOM付きUTF-8で出力されるので
   try { text = new TextDecoder('utf-8').decode(buf); }
   catch { text = new TextDecoder('shift-jis').decode(buf); }
-  // BOM除去
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
   const lines = text.split(/\r?\n/);
   const sales = [];
-  for (let i = 1; i < lines.length; i++) { // 1行目はヘッダー
+  for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
-    // CSVの各フィールドはダブルクォートで囲まれている
     const cols = line.split(',').map(c => c.replace(/^"|"$/g,'').trim());
     if (cols.length < 5) continue;
     const date   = (cols[0]||'').trim();
-    const adCode = (cols[3]||'').trim();
+    let adCode   = (cols[3]||'').trim();
     const amount = parseInt((cols[4]||'').replace(/[^0-9]/g,''))||0;
     if (!date || !adCode || amount <= 0) continue;
-    // 日付形式を YYYY-MM-DD に正規化
+    // コード正規化: 設定済みコードと照合して最も近いものに寄せる
+    adCode = normalizeSalesCode(adCode);
     const normalDate = date.substring(0,10);
     sales.push({ date: normalDate, adCode, amount });
   }
   return sales;
+}
+
+// 売上CSVのコードを設定済み広告コードに正規化する
+// 1. エイリアス（別名）設定があればそちらを優先
+// 2. スペース・末尾欠けは前方一致で補正
+function normalizeSalesCode(raw) {
+  const knownCodes = S.settings.map(s => s.code);
+  // ① エイリアス設定確認
+  const aliasEntry = S.settings.find(s => {
+    const aliases = (s.alias||'').split(',').map(a=>a.trim()).filter(Boolean);
+    return aliases.includes(raw);
+  });
+  if (aliasEntry) return aliasEntry.code;
+  // ② 完全一致
+  if (knownCodes.includes(raw)) return raw;
+  // ③ 前方一致（rawが既知コードの先頭部分 or 既知コードがrawの先頭部分）
+  const fwd = knownCodes.find(c => c.startsWith(raw) || raw.startsWith(c));
+  if (fwd) return fwd;
+  // ④ 一致なし → そのまま返す
+  return raw;
 }
 
 // 売上データから今月・累計の売上をコード別に集計
@@ -603,6 +621,56 @@ function render() {
   }
 
   h += '</tbody></table>';
+
+  // ===== 代理店別サマリー =====
+  const agencyMap = {};
+  for (const r of visible) {
+    const ag = r.cfg.agency || '（未設定）';
+    if (!agencyMap[ag]) agencyMap[ag] = { reg:0, cost:0, rev:0, pay1:0 };
+    agencyMap[ag].reg  += r.reg;
+    agencyMap[ag].cost += r.cost;
+    agencyMap[ag].rev  += r.rev;
+    agencyMap[ag].pay1 += r.pay1;
+  }
+  const agencies = Object.keys(agencyMap).filter(a => agencyMap[a].cost > 0 || agencyMap[a].reg > 0);
+  if (agencies.length > 0) {
+    const yen = n => n > 0 ? '¥'+n.toLocaleString() : '-';
+    h += `<div style="margin-top:20px">
+      <div style="font-size:12px;color:var(--text2);font-weight:600;letter-spacing:.06em;margin-bottom:8px;padding:0 2px">📊 代理店別合計</div>
+      <table><thead><tr>
+        <th style="text-align:left;min-width:140px">代理店</th>
+        <th style="text-align:right">登録数</th>
+        <th style="text-align:right">広告費合計</th>
+        <th style="text-align:right">課金1回+</th>
+        <th style="text-align:right">売上（累計）</th>
+        <th style="text-align:right">ROAS</th>
+      </tr></thead><tbody>`;
+    let totReg=0, totCost=0, totRev=0, totPay=0;
+    agencies.sort().forEach(ag => {
+      const d = agencyMap[ag];
+      const roas = d.cost > 0 && d.rev > 0 ? (d.rev/d.cost*100).toFixed(0)+'%' : '-';
+      totReg+=d.reg; totCost+=d.cost; totRev+=d.rev; totPay+=d.pay1;
+      h += `<tr>
+        <td style="font-weight:600">${ag}</td>
+        <td style="text-align:right;font-family:var(--mono)">${d.reg}</td>
+        <td style="text-align:right;font-family:var(--mono);color:var(--amber)">${yen(d.cost)}</td>
+        <td style="text-align:right;font-family:var(--mono);color:var(--green)">${d.pay1||'-'}</td>
+        <td style="text-align:right;font-family:var(--mono)">${yen(d.rev)}</td>
+        <td style="text-align:right;font-family:var(--mono);font-weight:700;color:${roas!=='-'?'var(--accent)':'var(--text3)'}">${roas}</td>
+      </tr>`;
+    });
+    const totRoas = totCost > 0 && totRev > 0 ? (totRev/totCost*100).toFixed(0)+'%' : '-';
+    h += `<tr style="border-top:2px solid var(--border);background:var(--s2)">
+      <td style="font-weight:700">合計</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700">${totReg}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--amber)">${yen(totCost)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700;color:var(--green)">${totPay||'-'}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700">${yen(totRev)}</td>
+      <td style="text-align:right;font-family:var(--mono);font-weight:700;color:${totRoas!=='-'?'var(--accent)':'var(--text3)'}">${totRoas}</td>
+    </tr>`;
+    h += '</tbody></table></div>';
+  }
+
   el.innerHTML = h;
 }
 
@@ -659,6 +727,10 @@ function renderSettings() {
     <div class="srow">
       <span class="cname">${s.code}</span>
       <span class="stag stag-${s.status==='active'?'on':'off'}">${s.status==='active'?'稼働中':'停止中'}</span>
+      <label>代理店</label>
+      <input type="text" value="${s.agency||''}" placeholder="代理店名" onchange="upd(${i},'agency',this.value)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:5px;font-size:12px;width:100px">
+      <label>売上別名</label>
+      <input type="text" value="${s.alias||''}" placeholder="例:spkaiE" title="売上CSVで使われている別のコード名（カンマ区切りで複数可）" onchange="upd(${i},'alias',this.value)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:5px;font-size:12px;width:120px">
       <label>種別</label>
       <select onchange="upd(${i},'type',this.value)">
         <option value="manual" ${s.type==='manual'?'selected':''}>手動</option>
@@ -696,7 +768,7 @@ function addCodes() {
   const codes = raw.split(/[\n,\s]+/).map(c=>c.trim()).filter(Boolean);
   if (!codes.length) { alert('コードを入力してください'); return; }
   let added = 0;
-  codes.forEach(code => { if(!S.settings.find(s=>s.code===code)) { S.settings.push({code,type,price,ageMin,gender,status}); added++; } });
+  codes.forEach(code => { if(!S.settings.find(s=>s.code===code)) { S.settings.push({code,type,price,ageMin,gender,status,agency:''}); added++; } });
   saveSetting(); renderSettings();
   if(S.csvLoaded||S.excelLoaded) render();
   document.getElementById('new-codes').value = '';
