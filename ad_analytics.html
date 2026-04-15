@@ -221,6 +221,18 @@ td.grpsep{border-left:2px solid var(--border)}
 
     <!-- 設定タブ -->
     <div id="tab-settings" style="display:none">
+      <!-- 設定エクスポート/インポート -->
+      <div class="sec" style="margin-bottom:14px">
+        <h3>💾 設定のエクスポート／インポート</h3>
+        <div style="padding:14px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" onclick="exportSettings()">📤 設定をエクスポート（JSON）</button>
+          <div style="position:relative">
+            <button class="btn" onclick="document.getElementById('import-file').click()">📥 設定をインポート（JSON）</button>
+            <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSettings(event)">
+          </div>
+          <span style="font-size:11px;color:var(--text3)">JSONファイルをPC間で共有するだけで設定を同期できます</span>
+        </div>
+      </div>
       <div class="sec">
         <h3>📋 広告コード設定</h3>
         <div class="slist" id="slist"></div>
@@ -320,15 +332,30 @@ const S = {
   lastRows: [],
 };
 
-// ===== ストレージ =====
+// ===== ストレージ（window.storage優先、なければlocalStorage）=====
+const STORAGE_KEY = 'adtool_v5';
 async function loadSettings() {
   try {
-    const r = await window.storage.get('adtool_v4');
-    S.settings = r ? JSON.parse(r.value) : DEFAULTS.map(d=>({...d}));
-  } catch { S.settings = DEFAULTS.map(d=>({...d})); }
+    // まずwindow.storageを試みる
+    if (typeof window.storage !== 'undefined') {
+      const r = await window.storage.get(STORAGE_KEY);
+      if (r && r.value) { S.settings = JSON.parse(r.value); return; }
+    }
+  } catch {}
+  try {
+    // localStorageをフォールバック
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v) { S.settings = JSON.parse(v); return; }
+  } catch {}
+  // どちらもなければデフォルト
+  S.settings = DEFAULTS.map(d=>({...d}));
 }
 async function saveSetting() {
-  try { await window.storage.set('adtool_v4', JSON.stringify(S.settings)); } catch {}
+  const json = JSON.stringify(S.settings);
+  try {
+    if (typeof window.storage !== 'undefined') await window.storage.set(STORAGE_KEY, json);
+  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, json); } catch {}
 }
 
 // ===== CSV パース =====
@@ -758,6 +785,41 @@ function renderSettings() {
 
 function upd(i, k, v) { S.settings[i][k]=v; saveSetting(); renderSettings(); if(S.csvLoaded||S.excelLoaded) render(); }
 function del(i) { if(!confirm('削除しますか？')) return; S.settings.splice(i,1); saveSetting(); renderSettings(); if(S.csvLoaded||S.excelLoaded) render(); }
+
+// ===== 設定エクスポート/インポート =====
+function exportSettings() {
+  const json = JSON.stringify(S.settings, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `広告集計_設定_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+function importSettings(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error('フォーマットが正しくありません');
+      // 既存設定とマージ（インポート側を優先、新規コードは追加）
+      imported.forEach(imp => {
+        const idx = S.settings.findIndex(s => s.code === imp.code);
+        if (idx >= 0) S.settings[idx] = {...S.settings[idx], ...imp};
+        else S.settings.push(imp);
+      });
+      saveSetting();
+      renderSettings();
+      if (S.csvLoaded || S.excelLoaded) render();
+      alert(`✅ ${imported.length}件の設定をインポートしました`);
+    } catch(err) {
+      alert('❌ インポートエラー: ' + err.message);
+    }
+    e.target.value = ''; // リセット（同じファイルを再度選べるように）
+  };
+  reader.readAsText(file);
+}
 function addCodes() {
   const raw = document.getElementById('new-codes').value;
   const type = document.getElementById('new-type').value;
